@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+    <title>Test Project:master commits</title>
+    <link href="https://gitlab.example.com/commits.atom" rel="self" type="application/atom+xml"/>
+    <link href="https://gitlab.example.com/commits" rel="alternate" type="text/html"/>
+    <id>https://gitlab.example.com/commits</id>
+    <updated>2025-12-18T07:19:04+01:00</updated>
+    <entry>
+        <id>https://gitlab.example.com/-/commit/9668d5f494b695b3ae657e32cb32a651c440f297</id>
+        <link href="https://gitlab.example.com/-/commit/9668d5f494b695b3ae657e32cb32a651c440f297"/>
+        <title>fix(return): Send slack message and not retry when bigcommerce error</title>
+        <updated>2025-12-18T07:19:04+01:00</updated>
+        <author>
+            <name>Romain MILLAN</name>
+            <email>rmillan@spiriit.com</email>
+        </author>
+        <summary type="html"></summary>
+    </entry>
+    <entry>
+        <id>https://gitlab.example.com/-/commit/81f6b2a8d49f23ce656a39f72268989bdb56b5a6</id>
+        <link href="https://gitlab.example.com/-/commit/81f6b2a8d49f23ce656a39f72268989bdb56b5a6"/>
+        <title>fix(panel): Mobile view</title>
+        <updated>2025-12-17T10:30:00+01:00</updated>
+        <author>
+            <name>John Doe</name>
+            <email>john@example.com</email>
+        </author>
+        <summary type="html"></summary>
+    </entry>
+    <entry>
+        <id>https://gitlab.example.com/-/commit/abc123def456789012345678901234567890abcd</id>
+        <link href="https://gitlab.example.com/-/commit/abc123def456789012345678901234567890abcd"/>
+        <title>feat(api): Add new endpoint for users</title>
+        <updated>2025-12-16T14:00:00+01:00</updated>
+        <author>
+            <name>Jane Smith</name>
+        </author>
+        <summary type="html"></summary>
+    </entry>
+</feed>

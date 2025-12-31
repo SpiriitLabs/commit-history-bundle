@@ -1,0 +1,36 @@
+{# Use this to embed in your own layout: {{ include('@SpiriitCommitHistory/_commits.html.twig', { commits: commits }) }} #}
+
+{% if commits is empty %}
+    <div class="timeline--empty">
+        <p>No commits found.</p>
+    </div>
+{% else %}
+    {# Group commits by date #}
+    {% set grouped_commits = {} %}
+    {% for commit in commits %}
+        {% set date_key = commit.date|date('Y-m-d') %}
+        {% if grouped_commits[date_key] is not defined %}
+            {% set grouped_commits = grouped_commits|merge({(date_key): []}) %}
+        {% endif %}
+        {% set grouped_commits = grouped_commits|merge({
+            (date_key): grouped_commits[date_key]|merge([commit])
+        }) %}
+    {% endfor %}
+
+    <div class="timeline">
+        {% for date_key, day_commits in grouped_commits %}
+            <div class="timeline__date-group">
+                <div class="timeline__date-header">
+                    {{ day_commits[0].date|date('F d, Y') }}
+                </div>
+                <div class="timeline__commits">
+                    {% for commit in day_commits %}
+                        <div class="timeline__item">
+                            <div class="timeline__title">{{ commit.title }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
