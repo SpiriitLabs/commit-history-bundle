@@ -1,0 +1,38 @@
+[
+    {
+        "sha": "9668d5f494b695b3ae657e32cb32a651c440f297",
+        "html_url": "https://github.com/example/project/commit/9668d5f494b695b3ae657e32cb32a651c440f297",
+        "commit": {
+            "message": "fix(return): Send slack message and not retry when bigcommerce error",
+            "author": {
+                "name": "Romain MILLAN",
+                "email": "rmillan@spiriit.com",
+                "date": "2025-12-18T06:19:04Z"
+            }
+        }
+    },
+    {
+        "sha": "81f6b2a8d49f23ce656a39f72268989bdb56b5a6",
+        "html_url": "https://github.com/example/project/commit/81f6b2a8d49f23ce656a39f72268989bdb56b5a6",
+        "commit": {
+            "message": "fix(panel): Mobile view\n\nDetailed description here",
+            "author": {
+                "name": "John Doe",
+                "email": "john@example.com",
+                "date": "2025-12-17T09:30:00Z"
+            }
+        }
+    },
+    {
+        "sha": "abc123def456789012345678901234567890abcd",
+        "html_url": "https://github.com/example/project/commit/abc123def456789012345678901234567890abcd",
+        "commit": {
+            "message": "feat(api): Add new endpoint for users",
+            "author": {
+                "name": "Jane Smith",
+                "email": "jane@example.com",
+                "date": "2025-12-16T13:00:00Z"
+            }
+        }
+    }
+]

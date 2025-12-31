@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ feed_name }} - Commit History</title>
+    <style>
+        :root {
+            --timeline-color: #e5e7eb;
+            --timeline-dot-color: #3b82f6;
+            --timeline-dot-size: 14px;
+            --timeline-line-width: 2px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f9fafb;
+            color: #1f2937;
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            color: #111827;
+        }
+
+        /* Block */
+        .timeline {
+            position: relative;
+            padding-left: 2.5rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 0;
+            bottom: 0;
+            width: var(--timeline-line-width);
+            background: var(--timeline-color);
+        }
+
+        /* Block Modifier */
+        .timeline--empty {
+            text-align: center;
+            padding: 3rem;
+            color: #6b7280;
+        }
+
+        /* Date Group */
+        .timeline__date-group {
+            padding-bottom: 2rem;
+        }
+
+        .timeline__date-group:last-child {
+            padding-bottom: 0;
+        }
+
+        .timeline__date-header {
+            position: relative;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #111827;
+            padding: 0.25rem 0;
+            margin-bottom: 0.75rem;
+        }
+
+        .timeline__date-header::before {
+            content: '';
+            position: absolute;
+            left: calc(-2.65rem + 6px - var(--timeline-dot-size) / 2 + var(--timeline-line-width) / 2);
+            top: 50%;
+            transform: translateY(-50%);
+            width: var(--timeline-dot-size);
+            height: var(--timeline-dot-size);
+            background: var(--timeline-dot-color);
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 2px var(--timeline-dot-color);
+        }
+
+        /* Commits list */
+        .timeline__commits {
+            margin-left: 0.25rem;
+            padding-left: 2.5rem;
+        }
+
+        /* Elements */
+        .timeline__item {
+            position: relative;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .timeline__item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .timeline__item:first-child {
+            padding-top: 0;
+        }
+
+        .timeline__title {
+            font-weight: 500;
+            color: #1f2937;
+            word-break: break-word;
+        }
+
+        .timeline__filter {
+            margin-bottom: 1.5rem;
+        }
+
+        .timeline__filter-select {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            background: #fff;
+            color: #1f2937;
+            cursor: pointer;
+        }
+
+        .timeline__filter-select:focus {
+            outline: none;
+            border-color: var(--timeline-dot-color);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem;
+            }
+
+            .timeline {
+                padding-left: 2rem;
+            }
+
+            .timeline__date-header::before {
+                left: calc(-2rem + 6px - var(--timeline-dot-size) / 2 + var(--timeline-line-width) / 2);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ feed_name }}</h1>
+
+        {% if available_years is defined and available_years|length > 0 %}
+            <form method="GET" class="timeline__filter">
+                <select name="year" class="timeline__filter-select" onchange="this.form.submit()">
+                    {% for year in available_years %}
+                        <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>
+                            {{ year }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </form>
+        {% endif %}
+
+        {% if commits is empty %}
+            <div class="timeline--empty">
+                <p>No commits found.</p>
+            </div>
+        {% else %}
+            {# Group commits by date #}
+            {% set grouped_commits = {} %}
+            {% for commit in commits %}
+                {% set date_key = commit.date|date('Y-m-d') %}
+                {% if grouped_commits[date_key] is not defined %}
+                    {% set grouped_commits = grouped_commits|merge({(date_key): []}) %}
+                {% endif %}
+                {% set grouped_commits = grouped_commits|merge({
+                    (date_key): grouped_commits[date_key]|merge([commit])
+                }) %}
+            {% endfor %}
+
+            <div class="timeline">
+                {% for date_key, day_commits in grouped_commits %}
+                    <div class="timeline__date-group">
+                        <div class="timeline__date-header">
+                            {{ day_commits[0].date|date('F d, Y') }}
+                        </div>
+                        <div class="timeline__commits">
+                            {% for commit in day_commits %}
+                                <div class="timeline__item">
+                                    <div class="timeline__title">{{ commit.title }}</div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

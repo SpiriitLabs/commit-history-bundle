@@ -1,0 +1,9 @@
+parameters:
+	level: 6
+	paths:
+		- src
+		- tests
+	excludePaths:
+		- src/DependencyInjection/Configuration.php
+	ignoreErrors:
+		- '#Instantiated class Symfony\\Bundle\\TwigBundle\\TwigBundle not found#'
