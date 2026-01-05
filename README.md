@@ -56,6 +56,7 @@ spiriit_commit_history:
     feed_name: "My Project"
     cache_ttl: 3600
     available_years_count: 6
+    track_dependency_changes: true           # optional, enable/disable dependency tracking
     dependency_files:                        # optional, files to track for dependency changes
         - composer.json
         - composer.lock
@@ -77,6 +78,7 @@ spiriit_commit_history:
     feed_name: "My Project"
     cache_ttl: 3600
     available_years_count: 6
+    track_dependency_changes: true              # optional, enable/disable dependency tracking
     dependency_files:                           # optional, files to track for dependency changes
         - composer.json
         - composer.lock
@@ -99,6 +101,7 @@ spiriit_commit_history:
 | `feed_name` | string | `Commits` | Display name for the timeline |
 | `cache_ttl` | integer | `3600` | Cache duration in seconds |
 | `available_years_count` | integer | `6` | Number of years to show in the year filter dropdown |
+| `track_dependency_changes` | boolean | `true` | Enable or disable dependency file tracking |
 | `dependency_files` | array | `['composer.json', 'composer.lock', 'package.json', 'package-lock.json']` | Files to track for dependency changes |
 
 #### GitLab Options

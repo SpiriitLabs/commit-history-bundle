@@ -15,52 +15,32 @@ use Spiriit\Bundle\CommitHistoryBundle\DTO\DependencyChange;
 
 class DependenciesDiffParser implements DependenciesDiffParserInterface
 {
+    private const DIFF_LINE_ADDED = '+';
+    private const DIFF_LINE_REMOVED = '-';
+    private const VERSION_SEARCH_RANGE = 15;
+
     /**
-     * Keys that are not package names in dependency files.
+     * Regex patterns for parsing diff content.
+     */
+    private const PATTERN_COMPOSER_LOCK_NAME_WITH_PREFIX = '/^([+-])\s*"name":\s*"([^"]+)"/';
+    private const PATTERN_COMPOSER_LOCK_NAME_NEUTRAL = '/^\s*"name":\s*"([^"]+)"/';
+    private const PATTERN_PACKAGE_JSON_DEPENDENCY = '/^([+-])\s*"([^"]+)":\s*"([^"]+)"/';
+    private const PATTERN_SEMVER_VERSION = '/^[\d^~>=<*]|^workspace:/';
+
+    /**
+     * Keys that are not package names in dependency files (composer.json, package.json).
      */
     private const EXCLUDED_KEYS = [
-        'name',
-        'version',
-        'type',
-        'source',
-        'dist',
-        'require',
-        'require-dev',
-        'autoload',
-        'description',
-        'license',
-        'keywords',
-        'authors',
-        'homepage',
-        'support',
-        'funding',
-        'time',
-        'extra',
-        'scripts',
-        'config',
-        'minimum-stability',
-        'prefer-stable',
-        'repositories',
-        'bin',
-        'archive',
-        'abandoned',
-        'non-feature-branches',
-        'dependencies',
-        'devDependencies',
-        'peerDependencies',
-        'optionalDependencies',
-        'bundledDependencies',
-        'engines',
-        'main',
-        'module',
-        'browser',
-        'types',
-        'typings',
-        'exports',
-        'files',
-        'private',
-        'publishConfig',
-        'workspaces',
+        // composer.json / composer.lock keys
+        'name', 'version', 'type', 'source', 'dist', 'require', 'require-dev',
+        'autoload', 'description', 'license', 'keywords', 'authors', 'homepage',
+        'support', 'funding', 'time', 'extra', 'scripts', 'config',
+        'minimum-stability', 'prefer-stable', 'repositories', 'bin', 'archive',
+        'abandoned', 'non-feature-branches',
+        // package.json keys
+        'dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies',
+        'bundledDependencies', 'engines', 'main', 'module', 'browser', 'types',
+        'typings', 'exports', 'files', 'private', 'publishConfig', 'workspaces',
     ];
 
     public function parse(string $diffContent): array
@@ -68,25 +48,169 @@ class DependenciesDiffParser implements DependenciesDiffParserInterface
         $removedPackages = [];
         $addedPackages = [];
 
-        $this->parseDiff($diffContent, $removedPackages, $addedPackages);
+        $this->extractPackagesFromDiff($diffContent, $removedPackages, $addedPackages);
 
-        // Build changes array
+        return $this->buildDependencyChanges($removedPackages, $addedPackages);
+    }
+
+    /**
+     * Extract added and removed packages from diff content.
+     *
+     * @param array<string, string> $removedPackages
+     * @param array<string, string> $addedPackages
+     */
+    private function extractPackagesFromDiff(string $diffContent, array &$removedPackages, array &$addedPackages): void
+    {
+        $lines = explode("\n", $diffContent);
+        $lineCount = \count($lines);
+
+        for ($lineIndex = 0; $lineIndex < $lineCount; ++$lineIndex) {
+            $line = $lines[$lineIndex];
+
+            if ($this->tryParseComposerLockAddedOrRemovedPackage($lines, $lineIndex, $removedPackages, $addedPackages)) {
+                continue;
+            }
+
+            if ($this->tryParseComposerLockUpdatedPackage($lines, $lineIndex, $removedPackages, $addedPackages)) {
+                continue;
+            }
+
+            $this->tryParsePackageJsonDependency($line, $removedPackages, $addedPackages);
+        }
+    }
+
+    /**
+     * Try to parse a composer.lock format line where the package is added or removed.
+     * Format: +/- "name": "vendor/package" with "version": "x.x.x" on a nearby line.
+     *
+     * @param string[]              $lines
+     * @param array<string, string> $removedPackages
+     * @param array<string, string> $addedPackages
+     */
+    private function tryParseComposerLockAddedOrRemovedPackage(
+        array $lines,
+        int $lineIndex,
+        array &$removedPackages,
+        array &$addedPackages,
+    ): bool {
+        if (!preg_match(self::PATTERN_COMPOSER_LOCK_NAME_WITH_PREFIX, $lines[$lineIndex], $matches)) {
+            return false;
+        }
+
+        $diffPrefix = $matches[1];
+        $packageName = $matches[2];
+        $version = $this->findVersionNearLine($lines, $lineIndex, $diffPrefix);
+
+        if (null === $version) {
+            return true;
+        }
+
+        if (self::DIFF_LINE_REMOVED === $diffPrefix) {
+            $removedPackages[$packageName] = $version;
+        } else {
+            $addedPackages[$packageName] = $version;
+        }
+
+        return true;
+    }
+
+    /**
+     * Try to parse a composer.lock format line where only the version changed.
+     * Format: "name": "vendor/package" (unchanged) with -/+ "version": "x.x.x" nearby.
+     *
+     * @param string[]              $lines
+     * @param array<string, string> $removedPackages
+     * @param array<string, string> $addedPackages
+     */
+    private function tryParseComposerLockUpdatedPackage(
+        array $lines,
+        int $lineIndex,
+        array &$removedPackages,
+        array &$addedPackages,
+    ): bool {
+        $line = $lines[$lineIndex];
+
+        if ($this->isAddedOrRemovedLine($line)) {
+            return false;
+        }
+
+        if (!preg_match(self::PATTERN_COMPOSER_LOCK_NAME_NEUTRAL, $line, $matches)) {
+            return false;
+        }
+
+        $packageName = $matches[1];
+        $oldVersion = $this->findVersionNearLine($lines, $lineIndex, self::DIFF_LINE_REMOVED);
+        $newVersion = $this->findVersionNearLine($lines, $lineIndex, self::DIFF_LINE_ADDED);
+
+        if (null === $oldVersion || null === $newVersion || $oldVersion === $newVersion) {
+            return true;
+        }
+
+        $removedPackages[$packageName] ??= $oldVersion;
+        $addedPackages[$packageName] ??= $newVersion;
+
+        return true;
+    }
+
+    /**
+     * Try to parse a package.json format dependency line.
+     * Format: +/- "package-name": "^1.0.0".
+     *
+     * @param array<string, string> $removedPackages
+     * @param array<string, string> $addedPackages
+     */
+    private function tryParsePackageJsonDependency(string $line, array &$removedPackages, array &$addedPackages): bool
+    {
+        if (!preg_match(self::PATTERN_PACKAGE_JSON_DEPENDENCY, $line, $matches)) {
+            return false;
+        }
+
+        $diffPrefix = $matches[1];
+        $key = $matches[2];
+        $value = $matches[3];
+
+        if (!$this->isValidPackageName($key)) {
+            return false;
+        }
+
+        if (!$this->isValidVersionString($value)) {
+            return false;
+        }
+
+        if (self::DIFF_LINE_REMOVED === $diffPrefix) {
+            $removedPackages[$key] = $value;
+        } else {
+            $addedPackages[$key] = $value;
+        }
+
+        return true;
+    }
+
+    /**
+     * Build DependencyChange objects from the extracted package data.
+     *
+     * @param array<string, string> $removedPackages
+     * @param array<string, string> $addedPackages
+     *
+     * @return DependencyChange[]
+     */
+    private function buildDependencyChanges(array $removedPackages, array $addedPackages): array
+    {
+        /** @var string[] $allPackageNames */
+        $allPackageNames = array_unique(array_merge(array_keys($removedPackages), array_keys($addedPackages)));
+        sort($allPackageNames);
+
+        /** @var DependencyChange[] $changes */
         $changes = [];
-        $allPackages = array_unique(array_merge(array_keys($removedPackages), array_keys($addedPackages)));
-        sort($allPackages);
 
-        foreach ($allPackages as $package) {
-            $fromVersion = $removedPackages[$package] ?? null;
-            $toVersion = $addedPackages[$package] ?? null;
+        foreach ($allPackageNames as $packageName) {
+            $oldVersion = $removedPackages[$packageName] ?? null;
+            $newVersion = $addedPackages[$packageName] ?? null;
 
-            if ($fromVersion && $toVersion) {
-                if ($fromVersion !== $toVersion) {
-                    $changes[] = new DependencyChange($package, $fromVersion, $toVersion, DependencyChange::TYPE_UPDATED);
-                }
-            } elseif ($toVersion) {
-                $changes[] = new DependencyChange($package, null, $toVersion, DependencyChange::TYPE_ADDED);
-            } elseif ($fromVersion) {
-                $changes[] = new DependencyChange($package, $fromVersion, null, DependencyChange::TYPE_REMOVED);
+            $change = $this->createDependencyChange($packageName, $oldVersion, $newVersion);
+
+            if (null !== $change) {
+                $changes[] = $change;
             }
         }
 
@@ -94,99 +218,75 @@ class DependenciesDiffParser implements DependenciesDiffParserInterface
     }
 
     /**
-     * Parse diff content for dependency changes.
-     * Supports both composer.lock format (separate name/version lines) and package.json format (inline).
-     *
-     * @param array<string, string> $removedPackages
-     * @param array<string, string> $addedPackages
+     * Create a DependencyChange object based on version changes.
      */
-    private function parseDiff(string $diffContent, array &$removedPackages, array &$addedPackages): void
+    private function createDependencyChange(string $packageName, ?string $oldVersion, ?string $newVersion): ?DependencyChange
     {
-        $lines = explode("\n", $diffContent);
-        $lineCount = \count($lines);
+        $hasOldVersion = null !== $oldVersion;
+        $hasNewVersion = null !== $newVersion;
 
-        for ($i = 0; $i < $lineCount; ++$i) {
-            $line = $lines[$i];
-            $trimmedLine = trim($line);
-
-            // Pattern 1a: composer.lock format - added/removed name line with version on separate line
-            if (preg_match('/^([+-])\s*"name":\s*"([^"]+)"/', $line, $nameMatch)) {
-                $prefix = $nameMatch[1];
-                $packageName = $nameMatch[2];
-
-                $version = $this->findVersionNearby($lines, $i, $prefix);
-
-                if ('-' === $prefix && $version) {
-                    $removedPackages[$packageName] = $version;
-                } elseif ('+' === $prefix && $version) {
-                    $addedPackages[$packageName] = $version;
-                }
-
-                continue;
-            }
-
-            // Pattern 1b: composer.lock format - neutral name line with version changes nearby
-            if (!str_starts_with($trimmedLine, '-') && !str_starts_with($trimmedLine, '+')
-                && preg_match('/^\s*"name":\s*"([^"]+)"/', $line, $nameMatch)) {
-                $packageName = $nameMatch[1];
-                $oldVersion = $this->findVersionNearby($lines, $i, '-');
-                $newVersion = $this->findVersionNearby($lines, $i, '+');
-
-                if ($oldVersion && $newVersion && $oldVersion !== $newVersion) {
-                    if (!isset($removedPackages[$packageName])) {
-                        $removedPackages[$packageName] = $oldVersion;
-                    }
-                    if (!isset($addedPackages[$packageName])) {
-                        $addedPackages[$packageName] = $newVersion;
-                    }
-                }
-
-                continue;
-            }
-
-            // Pattern 2: package.json format - "package-name": "version" on same line
-            if (preg_match('/^([+-])\s*"([^"]+)":\s*"([^"]+)"/', $line, $match)) {
-                $prefix = $match[1];
-                $packageName = $match[2];
-                $version = $match[3];
-
-                // Skip excluded keys (not package names)
-                if (\in_array($packageName, self::EXCLUDED_KEYS, true)) {
-                    continue;
-                }
-
-                // Version must look like semver (starts with digit, ^, ~, >=, <, *, workspace:, etc.)
-                if (!preg_match('/^[\d^~>=<*]|^workspace:/', $version)) {
-                    continue;
-                }
-
-                if ('-' === $prefix) {
-                    $removedPackages[$packageName] = $version;
-                } else {
-                    $addedPackages[$packageName] = $version;
-                }
-            }
+        if ($hasOldVersion && $hasNewVersion) {
+            return $oldVersion !== $newVersion
+                ? new DependencyChange($packageName, $oldVersion, $newVersion, DependencyChange::TYPE_UPDATED)
+                : null;
         }
+
+        if ($hasNewVersion) {
+            return new DependencyChange($packageName, null, $newVersion, DependencyChange::TYPE_ADDED);
+        }
+
+        if ($hasOldVersion) {
+            return new DependencyChange($packageName, $oldVersion, null, DependencyChange::TYPE_REMOVED);
+        }
+
+        return null;
     }
 
     /**
-     * Find version string near a given line index.
+     * Find a version string near the given line index with the specified diff prefix.
      *
      * @param string[] $lines
      */
-    private function findVersionNearby(array $lines, int $currentIndex, string $prefix): ?string
+    private function findVersionNearLine(array $lines, int $lineIndex, string $diffPrefix): ?string
     {
-        $searchRange = 15;
-        $start = max(0, $currentIndex - $searchRange);
-        $end = min(\count($lines), $currentIndex + $searchRange);
+        $startIndex = max(0, $lineIndex - self::VERSION_SEARCH_RANGE);
+        $endIndex = min(\count($lines), $lineIndex + self::VERSION_SEARCH_RANGE);
 
-        for ($i = $start; $i < $end; ++$i) {
-            $pattern = '/^'.preg_quote($prefix, '/').'\s*"version":\s*"([^"]+)"/';
-            if (preg_match($pattern, $lines[$i], $match)) {
-                return $match[1];
+        $pattern = '/^'.preg_quote($diffPrefix, '/').'\s*"version":\s*"([^"]+)"/';
+
+        for ($i = $startIndex; $i < $endIndex; ++$i) {
+            if (preg_match($pattern, $lines[$i], $matches)) {
+                return $matches[1];
             }
         }
 
         return null;
+    }
+
+    /**
+     * Check if the line starts with a diff add (+) or remove (-) prefix.
+     */
+    private function isAddedOrRemovedLine(string $line): bool
+    {
+        $trimmedLine = trim($line);
+
+        return str_starts_with($trimmedLine, self::DIFF_LINE_ADDED)
+            || str_starts_with($trimmedLine, self::DIFF_LINE_REMOVED);
+    }
+
+    /**
+     * Check if the key is a valid package name (not a reserved key).
+     */
+    private function isValidPackageName(string $key): bool
+    {
+        return !\in_array($key, self::EXCLUDED_KEYS, true);
+    }
+
+    /**
+     * Check if the value looks like a valid version string.
+     */
+    private function isValidVersionString(string $value): bool
+    {
+        return 1 === preg_match(self::PATTERN_SEMVER_VERSION, $value);
     }
 }

@@ -30,6 +30,7 @@ class Provider implements ProviderInterface
         private readonly ?string $token = null,
         private readonly ?string $ref = null,
         private readonly array $dependencyFiles = ['composer.json', 'composer.lock', 'package.json', 'package-lock.json'],
+        private readonly bool $trackDependencyChanges = true,
     ) {
     }
 
@@ -62,7 +63,7 @@ class Provider implements ProviderInterface
 
             foreach ($data as $item) {
                 $commit = $this->parser->parse($item);
-                $hasDependencyChanges = $this->hasDependencyFileChanges($item['sha']);
+                $hasDependencyChanges = $this->trackDependencyChanges && $this->hasDependencyFileChanges($item['sha']);
                 $commits[] = $commit->withHasDependenciesChanges($hasDependencyChanges);
             }
 
