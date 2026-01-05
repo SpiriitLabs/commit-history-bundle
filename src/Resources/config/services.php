@@ -37,6 +37,7 @@ return static function (ContainerConfigurator $container): void {
             param('spiriit_commit_history.gitlab.project_id'),
             param('spiriit_commit_history.gitlab.token'),
             param('spiriit_commit_history.gitlab.ref'),
+            param('spiriit_commit_history.dependency_files'),
         ]);
 
     // GitHub services
@@ -51,6 +52,7 @@ return static function (ContainerConfigurator $container): void {
             param('spiriit_commit_history.github.repo'),
             param('spiriit_commit_history.github.token'),
             param('spiriit_commit_history.github.ref'),
+            param('spiriit_commit_history.dependency_files'),
         ]);
 
     // Dependencies diff parser

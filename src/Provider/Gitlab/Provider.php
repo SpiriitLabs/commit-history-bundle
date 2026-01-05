@@ -18,13 +18,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class Provider implements ProviderInterface
 {
-    private const DEPENDENCY_FILES = [
-        'composer.lock',
-        'composer.json',
-        'package.json',
-        'package-lock.json',
-    ];
-
+    /**
+     * @param string[] $dependencyFiles
+     */
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly CommitParserInterface $parser,
@@ -32,6 +28,7 @@ class Provider implements ProviderInterface
         private readonly string $projectId,
         private readonly ?string $token = null,
         private readonly ?string $ref = null,
+        private readonly array $dependencyFiles = ['composer.json', 'composer.lock', 'package.json', 'package-lock.json'],
     ) {
     }
 
@@ -138,7 +135,7 @@ class Provider implements ProviderInterface
         $fileNames = $this->getCommitFileNames($commitId);
 
         foreach ($fileNames as $fileName) {
-            if (\in_array(basename($fileName), self::DEPENDENCY_FILES, true)) {
+            if (\in_array(basename($fileName), $this->dependencyFiles, true)) {
                 return true;
             }
         }

@@ -18,6 +18,7 @@ A Symfony bundle that fetches commit history from GitLab or GitHub repositories 
 - **Private Repository Support**: Supports authentication tokens for private repositories
 - **Standalone Page**: Ready-to-use page with embedded CSS
 - **Embeddable Fragment**: Include the timeline in your own layouts
+- **Dependency Tracking**: Highlights commits with dependency file changes (composer.json, package.json, etc.)
 
 ## Requirements
 
@@ -55,6 +56,11 @@ spiriit_commit_history:
     feed_name: "My Project"
     cache_ttl: 3600
     available_years_count: 6
+    dependency_files:                        # optional, files to track for dependency changes
+        - composer.json
+        - composer.lock
+        - package.json
+        - package-lock.json
 
     gitlab:
         project_id: "123"  # or "group%2Fproject" for path
@@ -71,6 +77,11 @@ spiriit_commit_history:
     feed_name: "My Project"
     cache_ttl: 3600
     available_years_count: 6
+    dependency_files:                           # optional, files to track for dependency changes
+        - composer.json
+        - composer.lock
+        - package.json
+        - package-lock.json
 
     github:
         owner: "myorg"
@@ -88,6 +99,7 @@ spiriit_commit_history:
 | `feed_name` | string | `Commits` | Display name for the timeline |
 | `cache_ttl` | integer | `3600` | Cache duration in seconds |
 | `available_years_count` | integer | `6` | Number of years to show in the year filter dropdown |
+| `dependency_files` | array | `['composer.json', 'composer.lock', 'package.json', 'package-lock.json']` | Files to track for dependency changes |
 
 #### GitLab Options
 
@@ -247,6 +259,7 @@ The templates use BEM naming convention:
 | `.timeline__hash` | Commit hash |
 | `.timeline__date` | Commit date |
 | `.timeline__author` | Author name |
+| `.timeline__deps-badge` | Dependencies change badge |
 
 ## Testing
 
