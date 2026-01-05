@@ -18,7 +18,12 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class Provider implements ProviderInterface
 {
-    private const COMPOSER_FILES = ['composer.lock', 'composer.json'];
+    private const DEPENDENCY_FILES = [
+        'composer.lock',
+        'composer.json',
+        'package.json',
+        'package-lock.json',
+    ];
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
@@ -72,8 +77,8 @@ class Provider implements ProviderInterface
 
             foreach ($data as $item) {
                 $commit = $this->parser->parse($item);
-                $hasComposerChanges = $this->hasComposerFileChanges($item['id']);
-                $commits[] = $commit->withHasComposerChanges($hasComposerChanges);
+                $hasDependencyChanges = $this->hasDependencyFileChanges($item['id']);
+                $commits[] = $commit->withHasComposerChanges($hasDependencyChanges);
             }
 
             ++$page;
@@ -128,12 +133,12 @@ class Provider implements ProviderInterface
         return '' !== $diffContent ? $diffContent : null;
     }
 
-    private function hasComposerFileChanges(string $commitId): bool
+    private function hasDependencyFileChanges(string $commitId): bool
     {
         $fileNames = $this->getCommitFileNames($commitId);
 
         foreach ($fileNames as $fileName) {
-            if (\in_array(basename($fileName), self::COMPOSER_FILES, true)) {
+            if (\in_array(basename($fileName), self::DEPENDENCY_FILES, true)) {
                 return true;
             }
         }
