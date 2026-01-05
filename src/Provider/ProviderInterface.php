@@ -19,4 +19,16 @@ interface ProviderInterface
      * @return Commit[]
      */
     public function getCommits(?\DateTimeImmutable $since = null, ?\DateTimeImmutable $until = null): array;
+
+    /**
+     * Get the list of file names changed in a commit.
+     *
+     * @return string[]
+     */
+    public function getCommitFileNames(string $commitId): array;
+
+    /**
+     * Get the diff content for a specific commit.
+     */
+    public function getCommitDiff(string $commitId): ?string;
 }

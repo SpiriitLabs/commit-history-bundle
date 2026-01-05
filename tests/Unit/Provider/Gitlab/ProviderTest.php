@@ -33,14 +33,23 @@ class ProviderTest extends TestCase
     public function testGetCommitsReturnsCommits(): void
     {
         $json = file_get_contents(__DIR__.'/../../../Fixtures/gitlab_commits.json');
+        $commitsData = json_decode($json, true);
 
-        $response = $this->createMock(ResponseInterface::class);
-        $response->method('toArray')->willReturn(json_decode($json, true));
+        $commitsResponse = $this->createMock(ResponseInterface::class);
+        $commitsResponse->method('toArray')->willReturn($commitsData);
+
+        $diffResponse = $this->createMock(ResponseInterface::class);
+        $diffResponse->method('toArray')->willReturn([]);
 
         $this->httpClient
-            ->expects($this->once())
             ->method('request')
-            ->willReturn($response);
+            ->willReturnCallback(function (string $method, string $url) use ($commitsResponse, $diffResponse) {
+                if (str_contains($url, '/diff')) {
+                    return $diffResponse;
+                }
+
+                return $commitsResponse;
+            });
 
         $provider = new Provider(
             $this->httpClient,
@@ -133,10 +142,20 @@ class ProviderTest extends TestCase
         $response2 = $this->createMock(ResponseInterface::class);
         $response2->method('toArray')->willReturn([]);
 
+        $diffResponse = $this->createMock(ResponseInterface::class);
+        $diffResponse->method('toArray')->willReturn([]);
+
+        $callCount = 0;
         $this->httpClient
-            ->expects($this->exactly(2))
             ->method('request')
-            ->willReturnOnConsecutiveCalls($response1, $response2);
+            ->willReturnCallback(function (string $method, string $url) use ($response1, $response2, $diffResponse, &$callCount) {
+                if (str_contains($url, '/diff')) {
+                    return $diffResponse;
+                }
+                ++$callCount;
+
+                return $callCount === 1 ? $response1 : $response2;
+            });
 
         $provider = new Provider(
             $this->httpClient,

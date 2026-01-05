@@ -12,11 +12,14 @@ declare(strict_types=1);
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 use Spiriit\Bundle\CommitHistoryBundle\Command\RefreshCacheCommand;
+use Spiriit\Bundle\CommitHistoryBundle\Controller\ComposerChangesController;
 use Spiriit\Bundle\CommitHistoryBundle\Controller\TimelineController;
 use Spiriit\Bundle\CommitHistoryBundle\Provider\Github\CommitParser as GithubCommitParser;
 use Spiriit\Bundle\CommitHistoryBundle\Provider\Github\Provider as GithubProvider;
 use Spiriit\Bundle\CommitHistoryBundle\Provider\Gitlab\CommitParser as GitlabCommitParser;
 use Spiriit\Bundle\CommitHistoryBundle\Provider\Gitlab\Provider as GitlabProvider;
+use Spiriit\Bundle\CommitHistoryBundle\Service\ComposerDiffParser;
+use Spiriit\Bundle\CommitHistoryBundle\Service\ComposerDiffParserInterface;
 use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcher;
 use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface;
 
@@ -50,6 +53,11 @@ return static function (ContainerConfigurator $container): void {
             param('spiriit_commit_history.github.ref'),
         ]);
 
+    // Composer diff parser
+    $services->set('spiriit_commit_history.composer_diff_parser', ComposerDiffParser::class);
+
+    $services->alias(ComposerDiffParserInterface::class, 'spiriit_commit_history.composer_diff_parser');
+
     // FeedFetcher (caching wrapper)
     $services->set('spiriit_commit_history.feed_fetcher', FeedFetcher::class)
         ->args([
@@ -61,12 +69,19 @@ return static function (ContainerConfigurator $container): void {
 
     $services->alias(FeedFetcherInterface::class, 'spiriit_commit_history.feed_fetcher');
 
-    // Controller
+    // Controllers
     $services->set('spiriit_commit_history.controller.timeline', TimelineController::class)
         ->args([
             service('spiriit_commit_history.feed_fetcher'),
             service('twig'),
             param('spiriit_commit_history.feed_name'),
+        ])
+        ->tag('controller.service_arguments');
+
+    $services->set('spiriit_commit_history.controller.composer_changes', ComposerChangesController::class)
+        ->args([
+            service('spiriit_commit_history.provider'),
+            service('spiriit_commit_history.composer_diff_parser'),
         ])
         ->tag('controller.service_arguments');
 

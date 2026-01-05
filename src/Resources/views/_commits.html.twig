@@ -1,4 +1,5 @@
 {# Use this to embed in your own layout: {{ include('@SpiriitCommitHistory/_commits.html.twig', { commits: commits }) }} #}
+{# Note: Include the CSS and JavaScript from timeline.html.twig for accordion functionality #}
 
 {% if commits is empty %}
     <div class="timeline--empty">
@@ -25,9 +26,23 @@
                 </div>
                 <div class="timeline__commits">
                     {% for commit in day_commits %}
-                        <div class="timeline__item">
-                            <div class="timeline__title">{{ commit.title }}</div>
-                        </div>
+                        {% if commit.hasComposerChanges %}
+                            <details class="timeline__item timeline__details" data-commit-id="{{ commit.id }}">
+                                <summary>
+                                    <div class="timeline__header">
+                                        <div class="timeline__title">{{ commit.title }}</div>
+                                        <span class="timeline__deps-badge">deps</span>
+                                    </div>
+                                </summary>
+                                <div class="timeline__accordion-content">
+                                    <div class="timeline__loading">Loading changes...</div>
+                                </div>
+                            </details>
+                        {% else %}
+                            <div class="timeline__item">
+                                <div class="timeline__title">{{ commit.title }}</div>
+                            </div>
+                        {% endif %}
                     {% endfor %}
                 </div>
             </div>

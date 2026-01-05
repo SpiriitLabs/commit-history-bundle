@@ -18,6 +18,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class Provider implements ProviderInterface
 {
+    private const COMPOSER_FILES = ['composer.lock', 'composer.json'];
+
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly CommitParserInterface $parser,
@@ -38,7 +40,7 @@ class Provider implements ProviderInterface
         $perPage = 100;
 
         do {
-            $url = rtrim($this->baseUrl, '/').'/api/v4/projects/'.urlencode($this->projectId).'/repository/commits';
+            $url = $this->buildApiUrl('/repository/commits');
 
             $options = [
                 'query' => [
@@ -59,9 +61,7 @@ class Provider implements ProviderInterface
                 $options['query']['until'] = $until->format('c');
             }
 
-            if (null !== $this->token) {
-                $options['headers'] = ['PRIVATE-TOKEN' => $this->token];
-            }
+            $this->addAuthHeaders($options);
 
             $response = $this->httpClient->request('GET', $url, $options);
             $data = $response->toArray();
@@ -71,12 +71,88 @@ class Provider implements ProviderInterface
             }
 
             foreach ($data as $item) {
-                $commits[] = $this->parser->parse($item);
+                $commit = $this->parser->parse($item);
+                $hasComposerChanges = $this->hasComposerFileChanges($item['id']);
+                $commits[] = $commit->withHasComposerChanges($hasComposerChanges);
             }
 
             ++$page;
         } while (\count($data) === $perPage);
 
         return $commits;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getCommitFileNames(string $commitId): array
+    {
+        $url = $this->buildApiUrl('/repository/commits/'.$commitId.'/diff');
+        $options = [];
+        $this->addAuthHeaders($options);
+
+        $response = $this->httpClient->request('GET', $url, $options);
+        $data = $response->toArray();
+
+        $fileNames = [];
+        foreach ($data as $diff) {
+            if (isset($diff['new_path'])) {
+                $fileNames[] = $diff['new_path'];
+            }
+            if (isset($diff['old_path']) && $diff['old_path'] !== ($diff['new_path'] ?? null)) {
+                $fileNames[] = $diff['old_path'];
+            }
+        }
+
+        return array_unique($fileNames);
+    }
+
+    public function getCommitDiff(string $commitId): ?string
+    {
+        $url = $this->buildApiUrl('/repository/commits/'.$commitId.'/diff');
+        $options = [];
+        $this->addAuthHeaders($options);
+
+        $response = $this->httpClient->request('GET', $url, $options);
+        $data = $response->toArray();
+
+        $diffContent = '';
+        foreach ($data as $diff) {
+            if (isset($diff['diff'])) {
+                $diffContent .= "--- a/{$diff['old_path']}\n";
+                $diffContent .= "+++ b/{$diff['new_path']}\n";
+                $diffContent .= $diff['diff']."\n";
+            }
+        }
+
+        return '' !== $diffContent ? $diffContent : null;
+    }
+
+    private function hasComposerFileChanges(string $commitId): bool
+    {
+        $fileNames = $this->getCommitFileNames($commitId);
+
+        foreach ($fileNames as $fileName) {
+            if (\in_array(basename($fileName), self::COMPOSER_FILES, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function buildApiUrl(string $path): string
+    {
+        return rtrim($this->baseUrl, '/').'/api/v4/projects/'.urlencode($this->projectId).$path;
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     */
+    private function addAuthHeaders(array &$options): void
+    {
+        if (null !== $this->token) {
+            $options['headers'] = ['PRIVATE-TOKEN' => $this->token];
+        }
     }
 }

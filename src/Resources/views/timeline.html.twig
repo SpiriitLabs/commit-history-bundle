@@ -30,11 +30,24 @@
             margin: 0 auto;
         }
 
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
         h1 {
             font-size: 1.875rem;
             font-weight: 700;
-            margin-bottom: 2rem;
+            margin: 0;
             color: #111827;
+        }
+
+        .page-description {
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
         }
 
         /* Block */
@@ -118,10 +131,105 @@
             font-weight: 500;
             color: #1f2937;
             word-break: break-word;
+            flex: 1;
         }
 
-        .timeline__filter {
-            margin-bottom: 1.5rem;
+        /* Accordion styles using details/summary */
+        .timeline__details {
+            border: none;
+        }
+
+        .timeline__details summary {
+            cursor: pointer;
+        }
+
+        .timeline__details summary .timeline__header {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: calc(100% - 1.5rem);
+            justify-content: space-between;
+        }
+
+        .timeline__details:hover {
+            background: #f9fafb;
+        }
+
+        .timeline__header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .timeline__deps-badge {
+            font-size: 0.625rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: #dbeafe;
+            color: #1d4ed8;
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            white-space: nowrap;
+        }
+
+        .timeline__accordion-content {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: #f9fafb;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+        }
+
+        .timeline__changes-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .timeline__change-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0;
+        }
+
+        .timeline__change-icon {
+            width: 1rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .timeline__change-icon--updated {
+            color: #2563eb;
+        }
+
+        .timeline__change-icon--added {
+            color: #16a34a;
+        }
+
+        .timeline__change-icon--removed {
+            color: #dc2626;
+        }
+
+        .timeline__change-package {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+        }
+
+        .timeline__change-versions {
+            color: #6b7280;
+            font-size: 0.8125rem;
+        }
+
+        .timeline__loading {
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        .timeline__no-changes {
+            color: #6b7280;
         }
 
         .timeline__filter-select {
@@ -157,19 +265,26 @@
 </head>
 <body>
     <div class="container">
-        <h1>{{ feed_name }}</h1>
-
-        {% if available_years is defined and available_years|length > 0 %}
-            <form method="GET" class="timeline__filter">
-                <select name="year" class="timeline__filter-select" onchange="this.form.submit()">
-                    {% for year in available_years %}
-                        <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>
-                            {{ year }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </form>
-        {% endif %}
+        <div class="page-header">
+            <h1>{{ feed_name }}</h1>
+            {% if available_years is defined and available_years|length > 0 %}
+                <form method="GET">
+                    <select name="year" class="timeline__filter-select" onchange="this.form.submit()">
+                        {% for year in available_years %}
+                            <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>
+                                {{ year }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            {% endif %}
+        </div>
+        <p class="page-description">
+            Commits marked with <span class="timeline__deps-badge">deps</span> contain dependencies changes. Click to view package updates.<br>
+            <span class="timeline__change-icon timeline__change-icon--added">+</span> added<br>
+            <span class="timeline__change-icon timeline__change-icon--removed">&minus;</span> removed<br>
+            <span class="timeline__change-icon timeline__change-icon--updated">&uarr;</span> updated<br>
+        </p>
 
         {% if commits is empty %}
             <div class="timeline--empty">
@@ -196,9 +311,23 @@
                         </div>
                         <div class="timeline__commits">
                             {% for commit in day_commits %}
-                                <div class="timeline__item">
-                                    <div class="timeline__title">{{ commit.title }}</div>
-                                </div>
+                                {% if commit.hasComposerChanges %}
+                                    <details class="timeline__item timeline__details" data-commit-id="{{ commit.id }}">
+                                        <summary>
+                                            <div class="timeline__header">
+                                                <div class="timeline__title">{{ commit.title }}</div>
+                                                <span class="timeline__deps-badge">deps</span>
+                                            </div>
+                                        </summary>
+                                        <div class="timeline__accordion-content">
+                                            <div class="timeline__loading">Loading changes...</div>
+                                        </div>
+                                    </details>
+                                {% else %}
+                                    <div class="timeline__item">
+                                        <div class="timeline__title">{{ commit.title }}</div>
+                                    </div>
+                                {% endif %}
                             {% endfor %}
                         </div>
                     </div>
@@ -206,5 +335,46 @@
             </div>
         {% endif %}
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.timeline__details').forEach(function(details) {
+                details.addEventListener('toggle', function() {
+                    if (!details.open) return;
+
+                    var contentEl = details.querySelector('.timeline__accordion-content');
+                    if (contentEl.dataset.loaded === 'true') return;
+
+                    var commitId = details.dataset.commitId;
+                    var url = '{{ path("spiriit_commit_history_composer_changes", {commitId: "__COMMIT_ID__"}) }}'.replace('__COMMIT_ID__', commitId);
+
+                    fetch(url)
+                        .then(function(response) { return response.json(); })
+                        .then(function(data) {
+                            contentEl.dataset.loaded = 'true';
+                            if (!data.changes || data.changes.length === 0) {
+                                contentEl.innerHTML = '<div class="timeline__no-changes">No composer changes found</div>';
+                                return;
+                            }
+                            var html = '<ul class="timeline__changes-list">';
+                            data.changes.forEach(function(change) {
+                                var icon = change.type === 'updated' ? '&uarr;' : (change.type === 'added' ? '+' : '-');
+                                var versions = change.type === 'added' ? '&rarr; ' + change.to :
+                                               change.type === 'removed' ? change.from + ' &rarr;' :
+                                               change.from + ' &rarr; ' + change.to;
+                                html += '<li class="timeline__change-item">' +
+                                    '<span class="timeline__change-icon timeline__change-icon--' + change.type + '">' + icon + '</span>' +
+                                    '<span class="timeline__change-package">' + change.package + '</span>' +
+                                    '<span class="timeline__change-versions">' + versions + '</span></li>';
+                            });
+                            contentEl.innerHTML = html + '</ul>';
+                        })
+                        .catch(function() {
+                            contentEl.innerHTML = '<div class="timeline__no-changes">Error loading changes</div>';
+                        });
+                });
+            });
+        });
+    </script>
 </body>
 </html>

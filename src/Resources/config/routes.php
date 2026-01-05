@@ -14,4 +14,8 @@ use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
 return static function (RoutingConfigurator $routes): void {
     $routes->add('spiriit_commit_history_timeline', '/')
         ->controller('spiriit_commit_history.controller.timeline');
+
+    $routes->add('spiriit_commit_history_composer_changes', '/commits/{commitId}/composer-changes')
+        ->controller('spiriit_commit_history.controller.composer_changes')
+        ->methods(['GET']);
 };

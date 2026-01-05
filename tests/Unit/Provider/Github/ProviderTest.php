@@ -33,15 +33,25 @@ class ProviderTest extends TestCase
     public function testGetCommitsReturnsCommits(): void
     {
         $json = file_get_contents(__DIR__.'/../../../Fixtures/github_commits.json');
+        $commitsData = json_decode($json, true);
 
-        $response = $this->createMock(ResponseInterface::class);
-        $response->method('toArray')->willReturn(json_decode($json, true));
-        $response->method('getHeaders')->willReturn([]);
+        $commitsResponse = $this->createMock(ResponseInterface::class);
+        $commitsResponse->method('toArray')->willReturn($commitsData);
+        $commitsResponse->method('getHeaders')->willReturn([]);
+
+        $commitDetailResponse = $this->createMock(ResponseInterface::class);
+        $commitDetailResponse->method('toArray')->willReturn(['files' => []]);
 
         $this->httpClient
-            ->expects($this->once())
             ->method('request')
-            ->willReturn($response);
+            ->willReturnCallback(function (string $method, string $url) use ($commitsResponse, $commitDetailResponse) {
+                // Individual commit endpoint (for file check) vs list endpoint
+                if (preg_match('#/commits/[a-f0-9]+$#', $url)) {
+                    return $commitDetailResponse;
+                }
+
+                return $commitsResponse;
+            });
 
         $provider = new Provider(
             $this->httpClient,
@@ -136,10 +146,21 @@ class ProviderTest extends TestCase
         $response2->method('toArray')->willReturn($commits);
         $response2->method('getHeaders')->willReturn([]);
 
+        $commitDetailResponse = $this->createMock(ResponseInterface::class);
+        $commitDetailResponse->method('toArray')->willReturn(['files' => []]);
+
+        $listCallCount = 0;
         $this->httpClient
-            ->expects($this->exactly(2))
             ->method('request')
-            ->willReturnOnConsecutiveCalls($response1, $response2);
+            ->willReturnCallback(function (string $method, string $url) use ($response1, $response2, $commitDetailResponse, &$listCallCount) {
+                // Individual commit endpoint (for file check) vs list endpoint
+                if (preg_match('#/commits/[a-f0-9]+$#', $url)) {
+                    return $commitDetailResponse;
+                }
+                ++$listCallCount;
+
+                return $listCallCount === 1 ? $response1 : $response2;
+            });
 
         $provider = new Provider(
             $this->httpClient,

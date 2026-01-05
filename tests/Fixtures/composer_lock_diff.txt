@@ -1,0 +1,38 @@
+diff --git a/composer.lock b/composer.lock
+index abc1234..def5678 100644
+--- a/composer.lock
++++ b/composer.lock
+@@ -100,7 +100,7 @@
+         {
+             "name": "symfony/console",
+-            "version": "v6.4.0",
++            "version": "v6.4.1",
+             "source": {
+                 "type": "git",
+                 "url": "https://github.com/symfony/console.git"
+@@ -200,7 +200,7 @@
+         {
+             "name": "symfony/http-kernel",
+-            "version": "v6.4.0",
++            "version": "v6.4.1",
+             "source": {
+                 "type": "git"
+             }
+@@ -300,6 +300,20 @@
+         }
+         },
++        {
++            "name": "monolog/monolog",
++            "version": "3.0.0",
++            "source": {
++                "type": "git"
++            }
++        },
+@@ -400,20 +400,6 @@
+-        {
+-            "name": "old/removed-package",
+-            "version": "1.0.0",
+-            "source": {
+-                "type": "git"
+-            }
+-        },

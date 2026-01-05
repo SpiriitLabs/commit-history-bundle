@@ -20,6 +20,20 @@ readonly class Commit
         public string $author,
         public string $url,
         public ?string $authorEmail = null,
+        public bool $hasComposerChanges = false,
     ) {
+    }
+
+    public function withHasComposerChanges(bool $hasComposerChanges): self
+    {
+        return new self(
+            $this->id,
+            $this->title,
+            $this->date,
+            $this->author,
+            $this->url,
+            $this->authorEmail,
+            $hasComposerChanges,
+        );
     }
 }
