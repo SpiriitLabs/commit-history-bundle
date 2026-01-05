@@ -26,12 +26,12 @@
                 </div>
                 <div class="timeline__commits">
                     {% for commit in day_commits %}
-                        {% if commit.hasComposerChanges %}
+                        {% if commit.hasDependenciesChanges %}
                             <details class="timeline__item timeline__details" data-commit-id="{{ commit.id }}">
                                 <summary>
                                     <div class="timeline__header">
                                         <div class="timeline__title">{{ commit.title }}</div>
-                                        <span class="timeline__deps-badge">deps</span>
+                                        <span class="timeline__deps-badge">DEPENDENCIES</span>
                                     </div>
                                 </summary>
                                 <div class="timeline__accordion-content">

@@ -11,15 +11,16 @@ declare(strict_types=1);
 
 namespace Spiriit\Bundle\CommitHistoryBundle\Controller;
 
+use Spiriit\Bundle\CommitHistoryBundle\DTO\DependencyChange;
 use Spiriit\Bundle\CommitHistoryBundle\Provider\ProviderInterface;
-use Spiriit\Bundle\CommitHistoryBundle\Service\ComposerDiffParserInterface;
+use Spiriit\Bundle\CommitHistoryBundle\Service\DependenciesDiffParserInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
-class ComposerChangesController
+readonly class DependenciesChangesController
 {
     public function __construct(
-        private readonly ProviderInterface $provider,
-        private readonly ComposerDiffParserInterface $composerDiffParser,
+        private ProviderInterface $provider,
+        private DependenciesDiffParserInterface $dependenciesDiffParser,
     ) {
     }
 
@@ -30,17 +31,17 @@ class ComposerChangesController
         if (null === $diff) {
             return new JsonResponse([
                 'commitId' => $commitId,
-                'hasComposerChanges' => false,
+                'hasDependenciesChanges' => false,
                 'changes' => [],
             ]);
         }
 
-        $changes = $this->composerDiffParser->parse($diff);
+        $changes = $this->dependenciesDiffParser->parse($diff);
 
         return new JsonResponse([
             'commitId' => $commitId,
-            'hasComposerChanges' => \count($changes) > 0,
-            'changes' => array_map(fn ($change) => [
+            'hasDependenciesChanges' => \count($changes) > 0,
+            'changes' => array_map(fn (DependencyChange $change): array => [
                 'package' => $change->package,
                 'from' => $change->fromVersion,
                 'to' => $change->toVersion,

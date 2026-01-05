@@ -12,16 +12,16 @@ declare(strict_types=1);
 namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Unit\Service;
 
 use PHPUnit\Framework\TestCase;
-use Spiriit\Bundle\CommitHistoryBundle\DTO\ComposerChange;
-use Spiriit\Bundle\CommitHistoryBundle\Service\ComposerDiffParser;
+use Spiriit\Bundle\CommitHistoryBundle\DTO\DependencyChange;
+use Spiriit\Bundle\CommitHistoryBundle\Service\DependenciesDiffParser;
 
-class ComposerDiffParserTest extends TestCase
+class DependenciesDiffParserTest extends TestCase
 {
-    private ComposerDiffParser $parser;
+    private DependenciesDiffParser $parser;
 
     protected function setUp(): void
     {
-        $this->parser = new ComposerDiffParser();
+        $this->parser = new DependenciesDiffParser();
     }
 
     public function testParseDetectsUpdatedPackages(): void
@@ -38,7 +38,7 @@ DIFF;
         $this->assertSame('symfony/console', $changes[0]->package);
         $this->assertSame('v6.4.0', $changes[0]->fromVersion);
         $this->assertSame('v6.4.1', $changes[0]->toVersion);
-        $this->assertSame(ComposerChange::TYPE_UPDATED, $changes[0]->type);
+        $this->assertSame(DependencyChange::TYPE_UPDATED, $changes[0]->type);
     }
 
     public function testParseDetectsAddedPackages(): void
@@ -56,7 +56,7 @@ DIFF;
         $this->assertSame('monolog/monolog', $changes[0]->package);
         $this->assertNull($changes[0]->fromVersion);
         $this->assertSame('3.0.0', $changes[0]->toVersion);
-        $this->assertSame(ComposerChange::TYPE_ADDED, $changes[0]->type);
+        $this->assertSame(DependencyChange::TYPE_ADDED, $changes[0]->type);
     }
 
     public function testParseDetectsRemovedPackages(): void
@@ -74,10 +74,10 @@ DIFF;
         $this->assertSame('old/package', $changes[0]->package);
         $this->assertSame('1.0.0', $changes[0]->fromVersion);
         $this->assertNull($changes[0]->toVersion);
-        $this->assertSame(ComposerChange::TYPE_REMOVED, $changes[0]->type);
+        $this->assertSame(DependencyChange::TYPE_REMOVED, $changes[0]->type);
     }
 
-    public function testParseReturnsEmptyArrayForNonComposerDiff(): void
+    public function testParseReturnsEmptyArrayForNonDependencyDiff(): void
     {
         $diff = <<<'DIFF'
 -function oldFunction() {}
@@ -89,15 +89,61 @@ DIFF;
         $this->assertEmpty($changes);
     }
 
+    public function testParseDetectsAddedPackageJsonDependency(): void
+    {
+        $diff = <<<'DIFF'
++        "pdfjs-dist": "^5.4.449",
+DIFF;
+
+        $changes = $this->parser->parse($diff);
+
+        $this->assertCount(1, $changes);
+        $this->assertSame('pdfjs-dist', $changes[0]->package);
+        $this->assertNull($changes[0]->fromVersion);
+        $this->assertSame('^5.4.449', $changes[0]->toVersion);
+        $this->assertSame(DependencyChange::TYPE_ADDED, $changes[0]->type);
+    }
+
+    public function testParseDetectsRemovedPackageJsonDependency(): void
+    {
+        $diff = <<<'DIFF'
+-        "lodash": "^4.17.21",
+DIFF;
+
+        $changes = $this->parser->parse($diff);
+
+        $this->assertCount(1, $changes);
+        $this->assertSame('lodash', $changes[0]->package);
+        $this->assertSame('^4.17.21', $changes[0]->fromVersion);
+        $this->assertNull($changes[0]->toVersion);
+        $this->assertSame(DependencyChange::TYPE_REMOVED, $changes[0]->type);
+    }
+
+    public function testParseDetectsUpdatedPackageJsonDependency(): void
+    {
+        $diff = <<<'DIFF'
+-        "react": "^17.0.0",
++        "react": "^18.0.0",
+DIFF;
+
+        $changes = $this->parser->parse($diff);
+
+        $this->assertCount(1, $changes);
+        $this->assertSame('react', $changes[0]->package);
+        $this->assertSame('^17.0.0', $changes[0]->fromVersion);
+        $this->assertSame('^18.0.0', $changes[0]->toVersion);
+        $this->assertSame(DependencyChange::TYPE_UPDATED, $changes[0]->type);
+    }
+
     public function testParseFromFixtureFile(): void
     {
-        $diff = file_get_contents(__DIR__ . '/../../Fixtures/composer_lock_diff.txt');
+        $diff = file_get_contents(__DIR__.'/../../Fixtures/composer_lock_diff.txt');
 
         $changes = $this->parser->parse($diff);
 
         $this->assertNotEmpty($changes);
 
-        $packageNames = array_map(fn (ComposerChange $c) => $c->package, $changes);
+        $packageNames = array_map(fn (DependencyChange $c): string => $c->package, $changes);
 
         $this->assertContains('symfony/console', $packageNames);
         $this->assertContains('symfony/http-kernel', $packageNames);

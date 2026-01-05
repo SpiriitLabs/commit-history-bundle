@@ -20,11 +20,11 @@ readonly class Commit
         public string $author,
         public string $url,
         public ?string $authorEmail = null,
-        public bool $hasComposerChanges = false,
+        public bool $hasDependenciesChanges = false,
     ) {
     }
 
-    public function withHasComposerChanges(bool $hasComposerChanges): self
+    public function withHasDependenciesChanges(bool $hasDependenciesChanges): self
     {
         return new self(
             $this->id,
@@ -33,7 +33,7 @@ readonly class Commit
             $this->author,
             $this->url,
             $this->authorEmail,
-            $hasComposerChanges,
+            $hasDependenciesChanges,
         );
     }
 }

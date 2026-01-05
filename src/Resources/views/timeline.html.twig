@@ -311,12 +311,12 @@
                         </div>
                         <div class="timeline__commits">
                             {% for commit in day_commits %}
-                                {% if commit.hasComposerChanges %}
+                                {% if commit.hasDependenciesChanges %}
                                     <details class="timeline__item timeline__details" data-commit-id="{{ commit.id }}">
                                         <summary>
                                             <div class="timeline__header">
                                                 <div class="timeline__title">{{ commit.title }}</div>
-                                                <span class="timeline__deps-badge">deps</span>
+                                                <span class="timeline__deps-badge">DEPENDENCIES</span>
                                             </div>
                                         </summary>
                                         <div class="timeline__accordion-content">
@@ -346,14 +346,14 @@
                     if (contentEl.dataset.loaded === 'true') return;
 
                     var commitId = details.dataset.commitId;
-                    var url = '{{ path("spiriit_commit_history_composer_changes", {commitId: "__COMMIT_ID__"}) }}'.replace('__COMMIT_ID__', commitId);
+                    var url = '{{ path("spiriit_commit_history_dependencies_changes", {commitId: "__COMMIT_ID__"}) }}'.replace('__COMMIT_ID__', commitId);
 
                     fetch(url)
                         .then(function(response) { return response.json(); })
                         .then(function(data) {
                             contentEl.dataset.loaded = 'true';
                             if (!data.changes || data.changes.length === 0) {
-                                contentEl.innerHTML = '<div class="timeline__no-changes">No composer changes found</div>';
+                                contentEl.innerHTML = '<div class="timeline__no-changes">No dependency changes found</div>';
                                 return;
                             }
                             var html = '<ul class="timeline__changes-list">';

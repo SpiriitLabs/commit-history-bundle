@@ -66,7 +66,7 @@ class Provider implements ProviderInterface
             foreach ($data as $item) {
                 $commit = $this->parser->parse($item);
                 $hasDependencyChanges = $this->hasDependencyFileChanges($item['sha']);
-                $commits[] = $commit->withHasComposerChanges($hasDependencyChanges);
+                $commits[] = $commit->withHasDependenciesChanges($hasDependencyChanges);
             }
 
             // Parse Link header for next page

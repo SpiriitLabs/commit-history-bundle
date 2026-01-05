@@ -43,7 +43,7 @@ class ProviderTest extends TestCase
 
         $this->httpClient
             ->method('request')
-            ->willReturnCallback(function (string $method, string $url) use ($commitsResponse, $diffResponse) {
+            ->willReturnCallback(function (string $method, string $url) use ($commitsResponse, $diffResponse): MockObject {
                 if (str_contains($url, '/diff')) {
                     return $diffResponse;
                 }
@@ -148,13 +148,13 @@ class ProviderTest extends TestCase
         $callCount = 0;
         $this->httpClient
             ->method('request')
-            ->willReturnCallback(function (string $method, string $url) use ($response1, $response2, $diffResponse, &$callCount) {
+            ->willReturnCallback(function (string $method, string $url) use ($response1, $response2, $diffResponse, &$callCount): MockObject {
                 if (str_contains($url, '/diff')) {
                     return $diffResponse;
                 }
                 ++$callCount;
 
-                return $callCount === 1 ? $response1 : $response2;
+                return 1 === $callCount ? $response1 : $response2;
             });
 
         $provider = new Provider(

@@ -11,14 +11,14 @@ declare(strict_types=1);
 
 namespace Spiriit\Bundle\CommitHistoryBundle\Service;
 
-use Spiriit\Bundle\CommitHistoryBundle\DTO\ComposerChange;
+use Spiriit\Bundle\CommitHistoryBundle\DTO\DependencyChange;
 
-interface ComposerDiffParserInterface
+interface DependenciesDiffParserInterface
 {
     /**
-     * Parse a diff content and extract composer package changes.
+     * Parse a diff content and extract dependency package changes.
      *
-     * @return ComposerChange[]
+     * @return DependencyChange[]
      */
     public function parse(string $diffContent): array;
 }

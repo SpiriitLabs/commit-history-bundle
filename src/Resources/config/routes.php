@@ -15,7 +15,7 @@ return static function (RoutingConfigurator $routes): void {
     $routes->add('spiriit_commit_history_timeline', '/')
         ->controller('spiriit_commit_history.controller.timeline');
 
-    $routes->add('spiriit_commit_history_composer_changes', '/commits/{commitId}/composer-changes')
-        ->controller('spiriit_commit_history.controller.composer_changes')
+    $routes->add('spiriit_commit_history_dependencies_changes', '/commits/{commitId}/dependencies-changes')
+        ->controller('spiriit_commit_history.controller.dependencies_changes')
         ->methods(['GET']);
 };

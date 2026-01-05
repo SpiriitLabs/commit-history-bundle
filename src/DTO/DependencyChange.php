@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 namespace Spiriit\Bundle\CommitHistoryBundle\DTO;
 
-readonly class ComposerChange
+readonly class DependencyChange
 {
     public const TYPE_UPDATED = 'updated';
     public const TYPE_ADDED = 'added';

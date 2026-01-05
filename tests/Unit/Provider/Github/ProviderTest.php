@@ -44,7 +44,7 @@ class ProviderTest extends TestCase
 
         $this->httpClient
             ->method('request')
-            ->willReturnCallback(function (string $method, string $url) use ($commitsResponse, $commitDetailResponse) {
+            ->willReturnCallback(function (string $method, string $url) use ($commitsResponse, $commitDetailResponse): MockObject {
                 // Individual commit endpoint (for file check) vs list endpoint
                 if (preg_match('#/commits/[a-f0-9]+$#', $url)) {
                     return $commitDetailResponse;
@@ -152,14 +152,14 @@ class ProviderTest extends TestCase
         $listCallCount = 0;
         $this->httpClient
             ->method('request')
-            ->willReturnCallback(function (string $method, string $url) use ($response1, $response2, $commitDetailResponse, &$listCallCount) {
+            ->willReturnCallback(function (string $method, string $url) use ($response1, $response2, $commitDetailResponse, &$listCallCount): MockObject {
                 // Individual commit endpoint (for file check) vs list endpoint
                 if (preg_match('#/commits/[a-f0-9]+$#', $url)) {
                     return $commitDetailResponse;
                 }
                 ++$listCallCount;
 
-                return $listCallCount === 1 ? $response1 : $response2;
+                return 1 === $listCallCount ? $response1 : $response2;
             });
 
         $provider = new Provider(
