@@ -182,4 +182,125 @@ class ProviderTest extends TestCase
 
         $provider->getCommits($since, $until);
     }
+
+    public function testGetCommitFileNames(): void
+    {
+        $diffResponse = [
+            ['new_path' => 'composer.json', 'old_path' => 'composer.json', 'diff' => 'some diff'],
+            ['new_path' => 'src/Controller.php', 'old_path' => 'src/Controller.php', 'diff' => 'another diff'],
+        ];
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('toArray')->willReturn($diffResponse);
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                $this->stringContains('/repository/commits/abc123/diff'),
+                $this->anything()
+            )
+            ->willReturn($response);
+
+        $provider = new Provider(
+            $this->httpClient,
+            $this->parser,
+            'https://gitlab.example.com',
+            '123',
+        );
+
+        $files = $provider->getCommitFileNames('abc123');
+
+        $this->assertCount(2, $files);
+        $this->assertContains('composer.json', $files);
+        $this->assertContains('src/Controller.php', $files);
+    }
+
+    public function testGetCommitFileNamesWithToken(): void
+    {
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('toArray')->willReturn([]);
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    return isset($options['headers']['PRIVATE-TOKEN'])
+                        && 'glpat-xxxx' === $options['headers']['PRIVATE-TOKEN'];
+                })
+            )
+            ->willReturn($response);
+
+        $provider = new Provider(
+            $this->httpClient,
+            $this->parser,
+            'https://gitlab.example.com',
+            '123',
+            'glpat-xxxx',
+        );
+
+        $provider->getCommitFileNames('abc123');
+    }
+
+    public function testGetCommitDiff(): void
+    {
+        $diffContent = '@@ -1,3 +1,4 @@\n+new line';
+        $diffResponse = [
+            ['new_path' => 'composer.json', 'old_path' => 'composer.json', 'diff' => $diffContent],
+            ['new_path' => 'README.md', 'old_path' => 'README.md', 'diff' => 'readme diff'],
+        ];
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('toArray')->willReturn($diffResponse);
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->willReturn($response);
+
+        $provider = new Provider(
+            $this->httpClient,
+            $this->parser,
+            'https://gitlab.example.com',
+            '123',
+        );
+
+        $diffs = $provider->getCommitDiff('abc123');
+
+        $this->assertCount(2, $diffs);
+        $this->assertArrayHasKey('composer.json', $diffs);
+        $this->assertArrayHasKey('README.md', $diffs);
+        $this->assertSame($diffContent, $diffs['composer.json']);
+    }
+
+    public function testGetCommitDiffUsesNewPathOverOldPath(): void
+    {
+        $diffResponse = [
+            ['new_path' => 'renamed.json', 'old_path' => 'original.json', 'diff' => 'diff content'],
+        ];
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('toArray')->willReturn($diffResponse);
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->willReturn($response);
+
+        $provider = new Provider(
+            $this->httpClient,
+            $this->parser,
+            'https://gitlab.example.com',
+            '123',
+        );
+
+        $diffs = $provider->getCommitDiff('abc123');
+
+        $this->assertArrayHasKey('renamed.json', $diffs);
+        $this->assertArrayNotHasKey('original.json', $diffs);
+    }
 }

@@ -87,4 +87,61 @@ class Provider implements ProviderInterface
 
         return null;
     }
+
+    /**
+     * @return string[]
+     */
+    public function getCommitFileNames(string $commitId): array
+    {
+        $data = $this->fetchCommitDetails($commitId);
+
+        $files = [];
+        foreach ($data['files'] ?? [] as $file) {
+            if (!empty($file['filename'])) {
+                $files[] = $file['filename'];
+            }
+        }
+
+        return $files;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getCommitDiff(string $commitId): array
+    {
+        $data = $this->fetchCommitDetails($commitId);
+
+        $result = [];
+        foreach ($data['files'] ?? [] as $file) {
+            $filename = $file['filename'] ?? '';
+            if (!empty($filename) && isset($file['patch'])) {
+                $result[$filename] = $file['patch'];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fetchCommitDetails(string $commitId): array
+    {
+        $url = rtrim($this->baseUrl, '/').'/repos/'.$this->owner.'/'.$this->repo.'/commits/'.$commitId;
+
+        $options = [
+            'headers' => [
+                'Accept' => 'application/vnd.github+json',
+            ],
+        ];
+
+        if (null !== $this->token) {
+            $options['headers']['Authorization'] = 'Bearer '.$this->token;
+        }
+
+        $response = $this->httpClient->request('GET', $url, $options);
+
+        return $response->toArray();
+    }
 }

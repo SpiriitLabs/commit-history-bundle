@@ -29,6 +29,8 @@ class SpiriitCommitHistoryExtension extends Extension
         $container->setParameter('spiriit_commit_history.feed_name', $config['feed_name']);
         $container->setParameter('spiriit_commit_history.cache_ttl', $config['cache_ttl']);
         $container->setParameter('spiriit_commit_history.available_years_count', $config['available_years_count']);
+        $container->setParameter('spiriit_commit_history.track_dependency_changes', $config['track_dependency_changes']);
+        $container->setParameter('spiriit_commit_history.dependency_files', $config['dependency_files']);
 
         // Set GitLab parameters
         $gitlab = $config['gitlab'] ?? [];

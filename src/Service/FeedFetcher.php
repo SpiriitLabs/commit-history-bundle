@@ -23,6 +23,7 @@ class FeedFetcher implements FeedFetcherInterface
         private readonly CacheInterface $cache,
         private readonly int $cacheTtl = 3600,
         private readonly int $availableYearsCount = 6,
+        private readonly ?DependencyDetectionService $dependencyDetectionService = null,
     ) {
     }
 
@@ -34,7 +35,7 @@ class FeedFetcher implements FeedFetcherInterface
         $year = $year ?? (int) date('Y');
         [$since, $until] = $this->getYearDateRange($year);
 
-        return $this->cache->get($this->getCacheKey($year), function (ItemInterface $item) use ($since, $until): array {
+        $commits = $this->cache->get($this->getCacheKey($year), function (ItemInterface $item) use ($since, $until): array {
             $commits = $this->provider->getCommits($since, $until);
 
             if (empty($commits)) {
@@ -45,6 +46,13 @@ class FeedFetcher implements FeedFetcherInterface
 
             return $commits;
         });
+
+        // Detect dependency changes for each commit (uses per-commit caching)
+        if (null !== $this->dependencyDetectionService) {
+            $commits = $this->dependencyDetectionService->detectForCommits($commits);
+        }
+
+        return $commits;
     }
 
     /**
@@ -73,7 +81,7 @@ class FeedFetcher implements FeedFetcherInterface
         return $years;
     }
 
-    private function getCacheKey(int $year): string
+    public function getCacheKey(int $year): string
     {
         return 'spiriit_commit_history_feed_'.md5(\get_class($this->provider)).'_'.$year;
     }

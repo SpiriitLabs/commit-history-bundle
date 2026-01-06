@@ -11,12 +11,18 @@ declare(strict_types=1);
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
+use Spiriit\Bundle\CommitHistoryBundle\Command\ClearCacheCommand;
 use Spiriit\Bundle\CommitHistoryBundle\Command\RefreshCacheCommand;
+use Spiriit\Bundle\CommitHistoryBundle\Controller\DependenciesChangesController;
 use Spiriit\Bundle\CommitHistoryBundle\Controller\TimelineController;
 use Spiriit\Bundle\CommitHistoryBundle\Provider\Github\CommitParser as GithubCommitParser;
 use Spiriit\Bundle\CommitHistoryBundle\Provider\Github\Provider as GithubProvider;
 use Spiriit\Bundle\CommitHistoryBundle\Provider\Gitlab\CommitParser as GitlabCommitParser;
 use Spiriit\Bundle\CommitHistoryBundle\Provider\Gitlab\Provider as GitlabProvider;
+use Spiriit\Bundle\CommitHistoryBundle\Service\DependencyDetectionService;
+use Spiriit\Bundle\CommitHistoryBundle\Service\DiffParser\ComposerDiffParser;
+use Spiriit\Bundle\CommitHistoryBundle\Service\DiffParser\DiffParserRegistry;
+use Spiriit\Bundle\CommitHistoryBundle\Service\DiffParser\PackageDiffParser;
 use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcher;
 use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface;
 
@@ -57,6 +63,7 @@ return static function (ContainerConfigurator $container): void {
             service('cache.app'),
             param('spiriit_commit_history.cache_ttl'),
             param('spiriit_commit_history.available_years_count'),
+            service('spiriit_commit_history.dependency_detection'),
         ]);
 
     $services->alias(FeedFetcherInterface::class, 'spiriit_commit_history.feed_fetcher');
@@ -73,6 +80,48 @@ return static function (ContainerConfigurator $container): void {
     // Commands
     $services->set('spiriit_commit_history.command.refresh_cache', RefreshCacheCommand::class)
         ->args([
+            service(FeedFetcherInterface::class),
+            service('cache.app'),
+        ])
+        ->tag('console.command');
+
+    // Diff Parsers (tagged for auto-discovery)
+    $services->set('spiriit_commit_history.diff_parser.composer', ComposerDiffParser::class)
+        ->tag('spiriit_commit_history.diff_parser');
+
+    $services->set('spiriit_commit_history.diff_parser.package', PackageDiffParser::class)
+        ->tag('spiriit_commit_history.diff_parser');
+
+    // Diff Parser Registry
+    $services->set('spiriit_commit_history.diff_parser_registry', DiffParserRegistry::class)
+        ->args([
+            tagged_iterator('spiriit_commit_history.diff_parser'),
+        ]);
+
+    // Dependency Detection Service
+    $services->set('spiriit_commit_history.dependency_detection', DependencyDetectionService::class)
+        ->args([
+            service('spiriit_commit_history.provider'),
+            service('cache.app'),
+            param('spiriit_commit_history.dependency_files'),
+            param('spiriit_commit_history.track_dependency_changes'),
+        ]);
+
+    // Dependencies Changes Controller
+    $services->set('spiriit_commit_history.controller.dependencies_changes', DependenciesChangesController::class)
+        ->args([
+            service('spiriit_commit_history.provider'),
+            service('spiriit_commit_history.diff_parser_registry'),
+            service('cache.app'),
+            param('spiriit_commit_history.dependency_files'),
+            param('spiriit_commit_history.track_dependency_changes'),
+        ])
+        ->tag('controller.service_arguments');
+
+    // Clear Cache Command
+    $services->set('spiriit_commit_history.command.clear_cache', ClearCacheCommand::class)
+        ->args([
+            service('cache.app'),
             service(FeedFetcherInterface::class),
         ])
         ->tag('console.command');
