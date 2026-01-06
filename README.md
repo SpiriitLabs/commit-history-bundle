@@ -13,6 +13,7 @@ A Symfony bundle that fetches commit history from GitLab or GitHub repositories 
 - **REST API Integration**: Uses official APIs with pagination to fetch all commits
 - **Self-Hosted Support**: Works with GitLab self-hosted instances and GitHub Enterprise
 - **Year Filtering**: Filter commits by year with a dropdown, fetched via API with per-year caching
+- **Dependency Tracking**: Automatically detect and display dependency changes (composer.json, package.json, etc.)
 - **Vertical Timeline UI**: Beautiful, responsive timeline inspired by Symfony releases
 - **Caching**: 1-hour cache by default to reduce API calls (cached per year)
 - **Private Repository Support**: Supports authentication tokens for private repositories
@@ -88,6 +89,8 @@ spiriit_commit_history:
 | `feed_name` | string | `Commits` | Display name for the timeline |
 | `cache_ttl` | integer | `3600` | Cache duration in seconds |
 | `available_years_count` | integer | `6` | Number of years to show in the year filter dropdown |
+| `track_dependency_changes` | boolean | `true` | Enable dependency change detection |
+| `dependency_files` | array | `[composer.json, composer.lock, package.json, package-lock.json]` | Files to track for dependency changes |
 
 #### GitLab Options
 
@@ -180,7 +183,9 @@ Then in your template:
 
 ### Console Commands
 
-Refresh the commit cache manually:
+#### Refresh Cache
+
+Refresh the commit cache and re-detect dependency badges:
 
 ```bash
 # Refresh current year (default)
@@ -194,7 +199,102 @@ php bin/console spiriit:commit-history:refresh --all
 php bin/console spiriit:commit-history:refresh -a
 ```
 
-This command clears the cache and fetches fresh commits from the provider. Each year is cached separately.
+This command clears the commits list cache and dependency detection cache, then fetches fresh data from the provider. Each year is cached separately.
+
+#### Clear Cache
+
+Clear all caches (commits list, dependency detection, and dependency changes):
+
+```bash
+# Clear all caches for all years
+php bin/console spiriit:commit-history:clear
+
+# Clear caches for a specific year only
+php bin/console spiriit:commit-history:clear 2024
+```
+
+This command clears all cached data without re-fetching. Useful if you want to force a complete refresh on the next page load.
+
+## Dependency Tracking
+
+The bundle automatically detects commits that modify dependency files (composer.json, package.json, etc.) and displays a "DEPENDENCIES" badge on these commits. Clicking the badge reveals the list of added, updated, or removed dependencies.
+
+### How It Works
+
+1. **Badge Detection**: When commits are loaded, the bundle checks if any dependency files were modified. This check is cached per-commit (forever, since commit content is immutable).
+
+2. **Lazy Loading**: The dependency details are only fetched when a user clicks the badge, reducing initial page load time.
+
+3. **Per-Commit Caching**: Both badge detection and dependency details are cached per-commit. Since commit IDs are immutable, this cache never needs to expire.
+
+### Configuration
+
+```yaml
+spiriit_commit_history:
+    # Enable or disable dependency tracking entirely (default: true)
+    track_dependency_changes: true
+
+    # Files to track for dependency changes
+    dependency_files:
+        - composer.json
+        - composer.lock
+        - package.json
+        - package-lock.json
+```
+
+### Extending with Custom Parsers
+
+The bundle uses a tagged service pattern for diff parsers. You can add support for additional dependency file formats by creating your own parser.
+
+1. Create a parser class implementing `DiffParserInterface`:
+
+```php
+<?php
+
+namespace App\Service\DiffParser;
+
+use Spiriit\Bundle\CommitHistoryBundle\DTO\DependencyChange;
+use Spiriit\Bundle\CommitHistoryBundle\Service\DiffParser\DiffParserInterface;
+
+class GemfileDiffParser implements DiffParserInterface
+{
+    public function supports(string $filename): bool
+    {
+        return basename($filename) === 'Gemfile.lock';
+    }
+
+    /**
+     * @return DependencyChange[]
+     */
+    public function parse(string $diff, string $filename): array
+    {
+        // Parse the diff and return DependencyChange objects
+        $changes = [];
+        // ... your parsing logic
+        return $changes;
+    }
+}
+```
+
+2. Tag your service:
+
+```yaml
+services:
+    App\Service\DiffParser\GemfileDiffParser:
+        tags: ['spiriit_commit_history.diff_parser']
+```
+
+3. Add the file to the tracked files:
+
+```yaml
+spiriit_commit_history:
+    dependency_files:
+        - composer.json
+        - composer.lock
+        - package.json
+        - package-lock.json
+        - Gemfile.lock  # Your new file
+```
 
 ## Authentication
 
@@ -247,6 +347,17 @@ The templates use BEM naming convention:
 | `.timeline__hash` | Commit hash |
 | `.timeline__date` | Commit date |
 | `.timeline__author` | Author name |
+| `.timeline__badge` | Dependency badge (DEPENDENCIES label) |
+| `.timeline__badge--loading` | Loading state for badge |
+| `.timeline__dependencies` | Dependencies detail container |
+| `.timeline__dependencies-list` | List of dependency changes |
+| `.timeline__dependencies-item` | Individual dependency change |
+| `.timeline__dependencies-name` | Package name |
+| `.timeline__dependencies-version` | Version information |
+| `.timeline__dependencies-type` | Change type indicator dot |
+| `.timeline__dependencies-type--added` | Added dependency (green) |
+| `.timeline__dependencies-type--updated` | Updated dependency (orange) |
+| `.timeline__dependencies-type--removed` | Removed dependency (red) |
 
 ## Testing
 

@@ -30,11 +30,95 @@
             margin: 0 auto;
         }
 
-        h1 {
+        /* Header */
+        .header {
+            margin-bottom: 5rem;
+        }
+
+        .header__top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .header__title {
             font-size: 1.875rem;
             font-weight: 700;
-            margin-bottom: 2rem;
             color: #111827;
+            margin: 0;
+        }
+
+        .header__filter-select {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            background: #fff;
+            color: #1f2937;
+            cursor: pointer;
+        }
+
+        .header__filter-select:focus {
+            outline: none;
+            border-color: var(--timeline-dot-color);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .header__description {
+            color: #6b7280;
+            font-size: 0.875rem;
+            line-height: 1.7;
+            margin: 0;
+        }
+
+        .header__legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .header__legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.8125rem;
+            color: #4b5563;
+        }
+
+        /* Shared icon styles */
+        .dep-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.25rem;
+            font-weight: 700;
+        }
+
+        .dep-icon--added {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .dep-icon--updated {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .dep-icon--removed {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .header__legend-icon {
+            width: 1.125rem;
+            height: 1.125rem;
+            border-radius: 0.1875rem;
+            font-size: 0.75rem;
         }
 
         /* Block */
@@ -114,35 +198,134 @@
             padding-top: 0;
         }
 
+        /* Details item (commit with dependencies) */
+        details.timeline__item {
+            cursor: default;
+        }
+
+        .timeline__summary {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            list-style: none;
+        }
+
+        .timeline__summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .timeline__summary::marker {
+            display: none;
+        }
+
         .timeline__title {
             font-weight: 500;
             color: #1f2937;
             word-break: break-word;
+            flex: 1;
         }
 
-        .timeline__filter {
-            margin-bottom: 1.5rem;
+        /* Dependencies badge */
+        .timeline__badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.125rem 0.5rem;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            background: #dbeafe;
+            color: #1d4ed8;
+            border-radius: 0.25rem;
+            transition: background-color 0.15s ease;
+            flex-shrink: 0;
         }
 
-        .timeline__filter-select {
-            padding: 0.5rem 0.75rem;
-            font-size: 0.875rem;
-            border: 1px solid #d1d5db;
+        .timeline__badge::after {
+            content: ' ▸';
+            font-size: 0.625rem;
+            margin-left: 0.25rem;
+        }
+
+        details.timeline__item[open] .timeline__badge::after {
+            content: ' ▾';
+        }
+
+        .timeline__summary:hover .timeline__badge {
+            background: #bfdbfe;
+        }
+
+        .timeline__item--loading .timeline__badge {
+            opacity: 0.6;
+        }
+
+        /* Dependencies content */
+        .timeline__dependencies {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: #f9fafb;
             border-radius: 0.375rem;
-            background: #fff;
-            color: #1f2937;
-            cursor: pointer;
+            border: 1px solid #e5e7eb;
         }
 
-        .timeline__filter-select:focus {
-            outline: none;
-            border-color: var(--timeline-dot-color);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        .timeline__dependencies-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .timeline__dependencies-item {
+            display: flex;
+            align-items: center;
+            padding: 0.375rem 0;
+            font-size: 0.875rem;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .timeline__dependencies-item:last-child {
+            border-bottom: none;
+        }
+
+        .timeline__dependencies-name {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .timeline__dependencies-version {
+            color: #6b7280;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+        }
+
+        .timeline__dependencies-icon {
+            width: 1.25rem;
+            height: 1.25rem;
+            margin-right: 0.625rem;
+            flex-shrink: 0;
+            font-size: 0.875rem;
+        }
+
+        .timeline__dependencies-empty {
+            color: #6b7280;
+            font-style: italic;
+            margin: 0;
         }
 
         @media (max-width: 640px) {
             body {
                 padding: 1rem;
+            }
+
+            .header__top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+
+            .header__legend {
+                flex-direction: column;
+                gap: 0.5rem;
             }
 
             .timeline {
@@ -157,19 +340,40 @@
 </head>
 <body>
     <div class="container">
-        <h1>{{ feed_name }}</h1>
-
-        {% if available_years is defined and available_years|length > 0 %}
-            <form method="GET" class="timeline__filter">
-                <select name="year" class="timeline__filter-select" onchange="this.form.submit()">
-                    {% for year in available_years %}
-                        <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>
-                            {{ year }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </form>
-        {% endif %}
+        <header class="header">
+            <div class="header__top">
+                <h1 class="header__title">{{ feed_name }}</h1>
+                {% if available_years is defined and available_years|length > 0 %}
+                    <form method="GET">
+                        <select name="year" class="header__filter-select" onchange="this.form.submit()">
+                            {% for year in available_years %}
+                                <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>
+                                    {{ year }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                {% endif %}
+            </div>
+            <p class="header__description">
+                This timeline shows the history of updates and changes.
+                Click on entries marked with <strong>Dependencies</strong> to see which packages were modified.
+            </p>
+            <div class="header__legend">
+                <span class="header__legend-item">
+                    <span class="dep-icon dep-icon--added header__legend-icon">+</span>
+                    New package
+                </span>
+                <span class="header__legend-item">
+                    <span class="dep-icon dep-icon--updated header__legend-icon">↑</span>
+                    Updated version
+                </span>
+                <span class="header__legend-item">
+                    <span class="dep-icon dep-icon--removed header__legend-icon">−</span>
+                    Removed package
+                </span>
+            </div>
+        </header>
 
         {% if commits is empty %}
             <div class="timeline--empty">
@@ -196,9 +400,21 @@
                         </div>
                         <div class="timeline__commits">
                             {% for commit in day_commits %}
-                                <div class="timeline__item">
-                                    <div class="timeline__title">{{ commit.title }}</div>
-                                </div>
+                                {% if commit.hasDependenciesChanges %}
+                                    <details class="timeline__item timeline__item--has-deps" data-commit-id="{{ commit.id }}">
+                                        <summary class="timeline__summary">
+                                            <span class="timeline__title">{{ commit.title }}</span>
+                                            <span class="timeline__badge">Dependencies</span>
+                                        </summary>
+                                        <div class="timeline__dependencies">
+                                            <p class="timeline__dependencies-empty">Loading...</p>
+                                        </div>
+                                    </details>
+                                {% else %}
+                                    <div class="timeline__item">
+                                        <div class="timeline__title">{{ commit.title }}</div>
+                                    </div>
+                                {% endif %}
                             {% endfor %}
                         </div>
                     </div>
@@ -206,5 +422,89 @@
             </div>
         {% endif %}
     </div>
+
+    <script>
+        (function() {
+            document.addEventListener('toggle', function(e) {
+                var details = e.target;
+                if (!details.classList.contains('timeline__item--has-deps')) return;
+                if (!details.open) return;
+                if (details.dataset.loaded) return;
+
+                var commitId = details.dataset.commitId;
+                var content = details.querySelector('.timeline__dependencies');
+                if (!content) return;
+
+                loadDependencies(commitId, details, content);
+            }, true);
+
+            function loadDependencies(commitId, details, content) {
+                details.classList.add('timeline__item--loading');
+
+                fetch('{{ path("spiriit_commit_history_dependencies", {"commitId": "__COMMIT_ID__"}) }}'.replace('__COMMIT_ID__', commitId))
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Failed to load dependencies');
+                        }
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        details.dataset.loaded = 'true';
+                        renderDependencies(content, data.changes || []);
+                    })
+                    .catch(function(error) {
+                        content.innerHTML = '<p class="timeline__dependencies-empty">Failed to load dependencies.</p>';
+                    })
+                    .finally(function() {
+                        details.classList.remove('timeline__item--loading');
+                    });
+            }
+
+            function renderDependencies(content, changes) {
+                if (changes.length === 0) {
+                    content.innerHTML = '<p class="timeline__dependencies-empty">No dependency changes detected.</p>';
+                    return;
+                }
+
+                var icons = {
+                    added: '+',
+                    updated: '↑',
+                    removed: '−'
+                };
+
+                var html = '<ul class="timeline__dependencies-list">';
+                changes.forEach(function(change) {
+                    var iconClass = 'dep-icon dep-icon--' + change.type + ' timeline__dependencies-icon';
+                    var icon = icons[change.type] || '?';
+                    var version = '';
+
+                    if (change.type === 'added') {
+                        version = change.newVersion || '';
+                    } else if (change.type === 'removed') {
+                        version = change.oldVersion || '';
+                    } else if (change.type === 'updated') {
+                        version = (change.oldVersion || '?') + ' → ' + (change.newVersion || '?');
+                    }
+
+                    html += '<li class="timeline__dependencies-item">';
+                    html += '<span class="' + iconClass + '">' + icon + '</span>';
+                    html += '<span class="timeline__dependencies-name">' + escapeHtml(change.name) + '</span>';
+                    if (version) {
+                        html += '<span class="timeline__dependencies-version">' + escapeHtml(version) + '</span>';
+                    }
+                    html += '</li>';
+                });
+                html += '</ul>';
+
+                content.innerHTML = html;
+            }
+
+            function escapeHtml(text) {
+                var div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        })();
+    </script>
 </body>
 </html>

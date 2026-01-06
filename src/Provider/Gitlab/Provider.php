@@ -79,4 +79,58 @@ class Provider implements ProviderInterface
 
         return $commits;
     }
+
+    /**
+     * @return string[]
+     */
+    public function getCommitFileNames(string $commitId): array
+    {
+        $diffs = $this->fetchCommitDiff($commitId);
+
+        $files = [];
+        foreach ($diffs as $diff) {
+            if (!empty($diff['new_path'])) {
+                $files[] = $diff['new_path'];
+            } elseif (!empty($diff['old_path'])) {
+                $files[] = $diff['old_path'];
+            }
+        }
+
+        return array_unique($files);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getCommitDiff(string $commitId): array
+    {
+        $diffs = $this->fetchCommitDiff($commitId);
+
+        $result = [];
+        foreach ($diffs as $diff) {
+            $filename = $diff['new_path'] ?? $diff['old_path'] ?? '';
+            if (!empty($filename) && isset($diff['diff'])) {
+                $result[$filename] = $diff['diff'];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchCommitDiff(string $commitId): array
+    {
+        $url = rtrim($this->baseUrl, '/').'/api/v4/projects/'.urlencode($this->projectId).'/repository/commits/'.$commitId.'/diff';
+
+        $options = [];
+        if (null !== $this->token) {
+            $options['headers'] = ['PRIVATE-TOKEN' => $this->token];
+        }
+
+        $response = $this->httpClient->request('GET', $url, $options);
+
+        return $response->toArray();
+    }
 }

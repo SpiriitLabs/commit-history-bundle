@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace Spiriit\Bundle\CommitHistoryBundle\Command;
 
+use Spiriit\Bundle\CommitHistoryBundle\Service\DependencyDetectionService;
 use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -19,15 +20,17 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Contracts\Cache\CacheInterface;
 
 #[AsCommand(
     name: 'spiriit:commit-history:refresh',
-    description: 'Refresh the commit history cache',
+    description: 'Refresh the commit history cache and dependency detection',
 )]
 class RefreshCacheCommand extends Command
 {
     public function __construct(
         private readonly FeedFetcherInterface $feedFetcher,
+        private readonly CacheInterface $cache,
     ) {
         parent::__construct();
     }
@@ -51,7 +54,7 @@ class RefreshCacheCommand extends Command
             $totalCommits = 0;
 
             foreach ($years as $year) {
-                $commits = $this->feedFetcher->refresh($year);
+                $commits = $this->refreshYear($year);
                 $count = \count($commits);
                 $totalCommits += $count;
                 $io->text(\sprintf('Year %d: %d commits fetched.', $year, $count));
@@ -59,13 +62,30 @@ class RefreshCacheCommand extends Command
 
             $io->success(\sprintf('Cache refreshed for all %d years. %d total commits fetched.', \count($years), $totalCommits));
         } else {
-            $year = null !== $yearArg ? (int) $yearArg : null;
-            $commits = $this->feedFetcher->refresh($year);
-            $displayYear = $year ?? (int) date('Y');
+            $year = null !== $yearArg ? (int) $yearArg : (int) date('Y');
+            $commits = $this->refreshYear($year);
 
-            $io->success(\sprintf('Cache refreshed for year %d. %d commits fetched.', $displayYear, \count($commits)));
+            $io->success(\sprintf('Cache refreshed for year %d. %d commits fetched.', $year, \count($commits)));
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * @return \Spiriit\Bundle\CommitHistoryBundle\DTO\Commit[]
+     */
+    private function refreshYear(int $year): array
+    {
+        // Get existing commits to clear their dependency detection cache
+        $existingCommits = $this->feedFetcher->fetch($year);
+
+        // Clear dependency detection cache for existing commits
+        foreach ($existingCommits as $commit) {
+            $hasDepsKey = DependencyDetectionService::getCacheKeyPrefix().$commit->id;
+            $this->cache->delete($hasDepsKey);
+        }
+
+        // Refresh commits (clears commits cache, re-fetches, and re-detects dependencies)
+        return $this->feedFetcher->refresh($year);
     }
 }

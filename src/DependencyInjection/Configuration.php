@@ -41,6 +41,20 @@ class Configuration implements ConfigurationInterface
                     ->min(1)
                     ->info('Number of years to show in the year filter dropdown')
                 ->end()
+                ->booleanNode('track_dependency_changes')
+                    ->defaultTrue()
+                    ->info('Enable or disable dependency change tracking')
+                ->end()
+                ->arrayNode('dependency_files')
+                    ->scalarPrototype()->end()
+                    ->defaultValue([
+                        'composer.json',
+                        'composer.lock',
+                        'package.json',
+                        'package-lock.json',
+                    ])
+                    ->info('List of dependency files to track for changes')
+                ->end()
                 ->arrayNode('gitlab')
                     ->children()
                         ->scalarNode('project_id')

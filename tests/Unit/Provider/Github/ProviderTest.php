@@ -188,4 +188,142 @@ class ProviderTest extends TestCase
 
         $provider->getCommits($since, $until);
     }
+
+    public function testGetCommitFileNames(): void
+    {
+        $commitResponse = [
+            'sha' => 'abc123',
+            'files' => [
+                ['filename' => 'composer.json', 'patch' => 'some diff'],
+                ['filename' => 'src/Controller.php', 'patch' => 'another diff'],
+            ],
+        ];
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('toArray')->willReturn($commitResponse);
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                $this->stringContains('/commits/abc123'),
+                $this->anything()
+            )
+            ->willReturn($response);
+
+        $provider = new Provider(
+            $this->httpClient,
+            $this->parser,
+            'https://api.github.com',
+            'example',
+            'project',
+        );
+
+        $files = $provider->getCommitFileNames('abc123');
+
+        $this->assertCount(2, $files);
+        $this->assertContains('composer.json', $files);
+        $this->assertContains('src/Controller.php', $files);
+    }
+
+    public function testGetCommitFileNamesWithToken(): void
+    {
+        $commitResponse = ['sha' => 'abc123', 'files' => []];
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('toArray')->willReturn($commitResponse);
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    return isset($options['headers']['Authorization'])
+                        && 'Bearer ghp_xxxx' === $options['headers']['Authorization'];
+                })
+            )
+            ->willReturn($response);
+
+        $provider = new Provider(
+            $this->httpClient,
+            $this->parser,
+            'https://api.github.com',
+            'example',
+            'project',
+            'ghp_xxxx',
+        );
+
+        $provider->getCommitFileNames('abc123');
+    }
+
+    public function testGetCommitDiff(): void
+    {
+        $patchContent = '@@ -1,3 +1,4 @@\n+new line';
+        $commitResponse = [
+            'sha' => 'abc123',
+            'files' => [
+                ['filename' => 'composer.json', 'patch' => $patchContent],
+                ['filename' => 'README.md', 'patch' => 'readme diff'],
+            ],
+        ];
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('toArray')->willReturn($commitResponse);
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->willReturn($response);
+
+        $provider = new Provider(
+            $this->httpClient,
+            $this->parser,
+            'https://api.github.com',
+            'example',
+            'project',
+        );
+
+        $diffs = $provider->getCommitDiff('abc123');
+
+        $this->assertCount(2, $diffs);
+        $this->assertArrayHasKey('composer.json', $diffs);
+        $this->assertArrayHasKey('README.md', $diffs);
+        $this->assertSame($patchContent, $diffs['composer.json']);
+    }
+
+    public function testGetCommitDiffExcludesFilesWithoutPatch(): void
+    {
+        $commitResponse = [
+            'sha' => 'abc123',
+            'files' => [
+                ['filename' => 'composer.json', 'patch' => 'diff content'],
+                ['filename' => 'binary.png'], // No patch for binary files
+            ],
+        ];
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('toArray')->willReturn($commitResponse);
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->willReturn($response);
+
+        $provider = new Provider(
+            $this->httpClient,
+            $this->parser,
+            'https://api.github.com',
+            'example',
+            'project',
+        );
+
+        $diffs = $provider->getCommitDiff('abc123');
+
+        $this->assertCount(1, $diffs);
+        $this->assertArrayHasKey('composer.json', $diffs);
+        $this->assertArrayNotHasKey('binary.png', $diffs);
+    }
 }

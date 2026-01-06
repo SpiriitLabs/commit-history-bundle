@@ -33,4 +33,10 @@ interface FeedFetcherInterface
      * @return int[]
      */
     public function getAvailableYears(): array;
+
+    /**
+     * Get the cache key for a specific year.
+     * Useful for cache clearing commands.
+     */
+    public function getCacheKey(int $year): string;
 }

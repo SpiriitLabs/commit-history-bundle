@@ -20,6 +20,20 @@ readonly class Commit
         public string $author,
         public string $url,
         public ?string $authorEmail = null,
+        public bool $hasDependenciesChanges = false,
     ) {
+    }
+
+    public function withHasDependenciesChanges(bool $hasDependenciesChanges): self
+    {
+        return new self(
+            $this->id,
+            $this->title,
+            $this->date,
+            $this->author,
+            $this->url,
+            $this->authorEmail,
+            $hasDependenciesChanges,
+        );
     }
 }
