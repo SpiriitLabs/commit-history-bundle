@@ -13,8 +13,8 @@ namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Functional\DependencyInjectio
 
 use PHPUnit\Framework\TestCase;
 use Spiriit\Bundle\CommitHistoryBundle\DependencyInjection\SpiriitCommitHistoryExtension;
-use Spiriit\Bundle\CommitHistoryBundle\Provider\ProviderInterface;
-use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface;
+use Spiriit\CommitHistory\Provider\ProviderInterface;
+use Spiriit\CommitHistory\Service\FeedFetcherInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 class SpiriitCommitHistoryExtensionTest extends TestCase

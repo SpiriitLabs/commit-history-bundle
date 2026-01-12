@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 namespace Spiriit\Bundle\CommitHistoryBundle\DependencyInjection;
 
-use Spiriit\Bundle\CommitHistoryBundle\Provider\ProviderInterface;
+use Spiriit\CommitHistory\Provider\ProviderInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;

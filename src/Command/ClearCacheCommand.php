@@ -12,8 +12,8 @@ declare(strict_types=1);
 namespace Spiriit\Bundle\CommitHistoryBundle\Command;
 
 use Spiriit\Bundle\CommitHistoryBundle\Controller\DependenciesChangesController;
-use Spiriit\Bundle\CommitHistoryBundle\Service\DependencyDetectionService;
-use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface;
+use Spiriit\CommitHistory\Service\DependencyDetectionService;
+use Spiriit\CommitHistory\Service\FeedFetcherInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;

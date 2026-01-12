@@ -13,8 +13,8 @@ namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Functional\Controller;
 
 use PHPUnit\Framework\TestCase;
 use Spiriit\Bundle\CommitHistoryBundle\Controller\TimelineController;
-use Spiriit\Bundle\CommitHistoryBundle\DTO\Commit;
-use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface;
+use Spiriit\CommitHistory\DTO\Commit;
+use Spiriit\CommitHistory\Service\FeedFetcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Twig\Environment;

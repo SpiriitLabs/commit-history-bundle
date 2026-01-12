@@ -10,8 +10,15 @@
             "email": "dev@spiriit.com"
         }
     ],
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../commit-history-lib"
+        }
+    ],
     "require": {
         "php": ">=8.2",
+        "spiriitlabs/commit-history": "@dev",
         "symfony/cache": "^6.4|^7.0",
         "symfony/console": "^6.4|^7.0",
         "symfony/framework-bundle": "^6.4|^7.0",

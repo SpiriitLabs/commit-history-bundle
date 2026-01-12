@@ -12,8 +12,8 @@ declare(strict_types=1);
 namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Unit\Provider\Github;
 
 use PHPUnit\Framework\TestCase;
-use Spiriit\Bundle\CommitHistoryBundle\DTO\Commit;
-use Spiriit\Bundle\CommitHistoryBundle\Provider\Github\CommitParser;
+use Spiriit\CommitHistory\DTO\Commit;
+use Spiriit\CommitHistory\Provider\Github\CommitParser;
 
 class CommitParserTest extends TestCase
 {

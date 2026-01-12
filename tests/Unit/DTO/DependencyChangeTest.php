@@ -12,7 +12,7 @@ declare(strict_types=1);
 namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Unit\DTO;
 
 use PHPUnit\Framework\TestCase;
-use Spiriit\Bundle\CommitHistoryBundle\DTO\DependencyChange;
+use Spiriit\CommitHistory\DTO\DependencyChange;
 
 class DependencyChangeTest extends TestCase
 {

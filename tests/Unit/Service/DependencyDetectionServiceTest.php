@@ -13,19 +13,19 @@ namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Unit\Service;
 
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Spiriit\Bundle\CommitHistoryBundle\DTO\Commit;
-use Spiriit\Bundle\CommitHistoryBundle\Provider\ProviderInterface;
-use Spiriit\Bundle\CommitHistoryBundle\Service\DependencyDetectionService;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Spiriit\Bundle\CommitHistoryBundle\Tests\Mock\ArrayCacheAdapter;
+use Spiriit\CommitHistory\DTO\Commit;
+use Spiriit\CommitHistory\Provider\ProviderInterface;
+use Spiriit\CommitHistory\Service\DependencyDetectionService;
 
 class DependencyDetectionServiceTest extends TestCase
 {
-    private ArrayAdapter $cache;
+    private ArrayCacheAdapter $cache;
     private ProviderInterface&MockObject $provider;
 
     protected function setUp(): void
     {
-        $this->cache = new ArrayAdapter();
+        $this->cache = new ArrayCacheAdapter();
         $this->provider = $this->createMock(ProviderInterface::class);
     }
 

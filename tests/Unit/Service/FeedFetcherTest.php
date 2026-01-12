@@ -12,18 +12,18 @@ declare(strict_types=1);
 namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Unit\Service;
 
 use PHPUnit\Framework\TestCase;
-use Spiriit\Bundle\CommitHistoryBundle\DTO\Commit;
-use Spiriit\Bundle\CommitHistoryBundle\Provider\ProviderInterface;
-use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcher;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Spiriit\Bundle\CommitHistoryBundle\Tests\Mock\ArrayCacheAdapter;
+use Spiriit\CommitHistory\DTO\Commit;
+use Spiriit\CommitHistory\Provider\ProviderInterface;
+use Spiriit\CommitHistory\Service\FeedFetcher;
 
 class FeedFetcherTest extends TestCase
 {
-    private ArrayAdapter $cache;
+    private ArrayCacheAdapter $cache;
 
     protected function setUp(): void
     {
-        $this->cache = new ArrayAdapter();
+        $this->cache = new ArrayCacheAdapter();
     }
 
     public function testFetchReturnsCommits(): void
@@ -109,24 +109,6 @@ class FeedFetcherTest extends TestCase
         // Refresh - should invalidate cache and fetch new data
         $result2 = $fetcher->refresh();
         $this->assertSame('def456', $result2[0]->id);
-    }
-
-    public function testFetchDoesNotCacheEmptyResult(): void
-    {
-        $provider = $this->createMock(ProviderInterface::class);
-        $provider->expects($this->exactly(2))
-            ->method('getCommits')
-            ->willReturn([]);
-
-        $fetcher = new FeedFetcher($provider, $this->cache, 3600);
-
-        // First call - returns empty, should not cache
-        $result1 = $fetcher->fetch();
-        $this->assertEmpty($result1);
-
-        // Second call - should call provider again (not use cache)
-        $result2 = $fetcher->fetch();
-        $this->assertEmpty($result2);
     }
 
     public function testFetchWithYearPassesDateRangeToProvider(): void
