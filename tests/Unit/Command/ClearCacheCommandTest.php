@@ -14,8 +14,8 @@ namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Unit\Command;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Spiriit\Bundle\CommitHistoryBundle\Command\ClearCacheCommand;
+use Spiriit\Bundle\CommitHistoryBundle\Service\CachingFeedFetcherInterface;
 use Spiriit\CommitHistory\DTO\Commit;
-use Spiriit\CommitHistory\Service\FeedFetcherInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -23,12 +23,12 @@ use Symfony\Component\Console\Tester\CommandTester;
 class ClearCacheCommandTest extends TestCase
 {
     private ArrayAdapter $cache;
-    private FeedFetcherInterface&MockObject $feedFetcher;
+    private CachingFeedFetcherInterface&MockObject $feedFetcher;
 
     protected function setUp(): void
     {
         $this->cache = new ArrayAdapter();
-        $this->feedFetcher = $this->createMock(FeedFetcherInterface::class);
+        $this->feedFetcher = $this->createMock(CachingFeedFetcherInterface::class);
     }
 
     public function testExecuteClearsAllYearsWithAllOption(): void

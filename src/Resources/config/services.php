@@ -11,13 +11,14 @@ declare(strict_types=1);
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
-use Spiriit\Bundle\CommitHistoryBundle\Adapter\SymfonyCacheAdapter;
 use Spiriit\Bundle\CommitHistoryBundle\Adapter\SymfonyHttpClientAdapter;
 use Spiriit\Bundle\CommitHistoryBundle\Command\ClearCacheCommand;
 use Spiriit\Bundle\CommitHistoryBundle\Command\RefreshCacheCommand;
 use Spiriit\Bundle\CommitHistoryBundle\Controller\DependenciesChangesController;
 use Spiriit\Bundle\CommitHistoryBundle\Controller\TimelineController;
-use Spiriit\CommitHistory\Contract\CacheInterface;
+use Spiriit\Bundle\CommitHistoryBundle\Service\CachingDependencyDetectionService;
+use Spiriit\Bundle\CommitHistoryBundle\Service\CachingFeedFetcher;
+use Spiriit\Bundle\CommitHistoryBundle\Service\CachingFeedFetcherInterface;
 use Spiriit\CommitHistory\Contract\HttpClientInterface;
 use Spiriit\CommitHistory\DiffParser\ComposerDiffParser;
 use Spiriit\CommitHistory\DiffParser\DiffParserRegistry;
@@ -26,21 +27,13 @@ use Spiriit\CommitHistory\Provider\Github\CommitParser as GithubCommitParser;
 use Spiriit\CommitHistory\Provider\Github\GithubProvider;
 use Spiriit\CommitHistory\Provider\Gitlab\CommitParser as GitlabCommitParser;
 use Spiriit\CommitHistory\Provider\Gitlab\GitlabProvider;
-use Spiriit\CommitHistory\Service\DependencyDetectionService;
 use Spiriit\CommitHistory\Service\FeedFetcher;
 use Spiriit\CommitHistory\Service\FeedFetcherInterface;
 
 return static function (ContainerConfigurator $container): void {
     $services = $container->services();
 
-    // Adapters (bridge Symfony to library contracts)
-    $services->set('spiriit_commit_history.cache_adapter', SymfonyCacheAdapter::class)
-        ->args([
-            service('cache.app'),
-        ]);
-
-    $services->alias(CacheInterface::class, 'spiriit_commit_history.cache_adapter');
-
+    // HTTP Client Adapter (bridges Symfony to library contract)
     $services->set('spiriit_commit_history.http_client_adapter', SymfonyHttpClientAdapter::class)
         ->args([
             service('http_client'),
@@ -88,26 +81,34 @@ return static function (ContainerConfigurator $container): void {
             tagged_iterator('spiriit_commit_history.diff_parser'),
         ]);
 
-    // Dependency Detection Service
-    $services->set('spiriit_commit_history.dependency_detection', DependencyDetectionService::class)
+    // Caching Dependency Detection Service (extends library's service with caching)
+    $services->set('spiriit_commit_history.dependency_detection', CachingDependencyDetectionService::class)
         ->args([
             service('spiriit_commit_history.provider'),
-            service('spiriit_commit_history.cache_adapter'),
             param('spiriit_commit_history.dependency_files'),
             param('spiriit_commit_history.track_dependency_changes'),
+            service('cache.app'),
         ]);
 
-    // FeedFetcher (caching wrapper)
-    $services->set('spiriit_commit_history.feed_fetcher', FeedFetcher::class)
+    // Library's FeedFetcher (inner, no caching of commits list)
+    $services->set('spiriit_commit_history.feed_fetcher.inner', FeedFetcher::class)
         ->args([
             service('spiriit_commit_history.provider'),
-            service('spiriit_commit_history.cache_adapter'),
-            param('spiriit_commit_history.cache_ttl'),
             param('spiriit_commit_history.available_years_count'),
             service('spiriit_commit_history.dependency_detection'),
         ]);
 
+    // Caching FeedFetcher (decorator that adds commits list caching)
+    $services->set('spiriit_commit_history.feed_fetcher', CachingFeedFetcher::class)
+        ->args([
+            service('spiriit_commit_history.feed_fetcher.inner'),
+            service('cache.app'),
+            param('spiriit_commit_history.cache_ttl'),
+            param('spiriit_commit_history.provider_hash'),
+        ]);
+
     $services->alias(FeedFetcherInterface::class, 'spiriit_commit_history.feed_fetcher');
+    $services->alias(CachingFeedFetcherInterface::class, 'spiriit_commit_history.feed_fetcher');
 
     // Controller
     $services->set('spiriit_commit_history.controller.timeline', TimelineController::class)
@@ -118,7 +119,7 @@ return static function (ContainerConfigurator $container): void {
         ])
         ->tag('controller.service_arguments');
 
-    // Dependencies Changes Controller
+    // Dependencies Changes Controller (has its own caching for dependency changes)
     $services->set('spiriit_commit_history.controller.dependencies_changes', DependenciesChangesController::class)
         ->args([
             service('spiriit_commit_history.provider'),
@@ -132,7 +133,7 @@ return static function (ContainerConfigurator $container): void {
     // Commands
     $services->set('spiriit_commit_history.command.refresh_cache', RefreshCacheCommand::class)
         ->args([
-            service(FeedFetcherInterface::class),
+            service(CachingFeedFetcherInterface::class),
             service('cache.app'),
         ])
         ->tag('console.command');
@@ -140,7 +141,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set('spiriit_commit_history.command.clear_cache', ClearCacheCommand::class)
         ->args([
             service('cache.app'),
-            service(FeedFetcherInterface::class),
+            service(CachingFeedFetcherInterface::class),
         ])
         ->tag('console.command');
 };
