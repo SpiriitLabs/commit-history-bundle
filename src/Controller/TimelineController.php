@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 namespace Spiriit\Bundle\CommitHistoryBundle\Controller;
 
-use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface;
+use Spiriit\CommitHistory\Service\FeedFetcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Twig\Environment;

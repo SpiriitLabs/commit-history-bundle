@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 namespace Spiriit\Bundle\CommitHistoryBundle\DependencyInjection;
 
-use Spiriit\Bundle\CommitHistoryBundle\Provider\ProviderInterface;
+use Spiriit\CommitHistory\Provider\ProviderInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
@@ -47,6 +47,10 @@ class SpiriitCommitHistoryExtension extends Extension
         $container->setParameter('spiriit_commit_history.github.token', $github['token'] ?? null);
         $container->setParameter('spiriit_commit_history.github.ref', $github['ref'] ?? null);
 
+        // Compute provider hash for unique cache keys
+        $providerHash = $this->computeProviderHash($config);
+        $container->setParameter('spiriit_commit_history.provider_hash', $providerHash);
+
         // Load services
         $loader = new PhpFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('services.php');
@@ -65,5 +69,20 @@ class SpiriitCommitHistoryExtension extends Extension
 
         $container->setAlias('spiriit_commit_history.provider', $providerServiceId);
         $container->setAlias(ProviderInterface::class, $providerServiceId);
+    }
+
+    /**
+     * Compute a unique hash for the provider configuration.
+     * Used to create unique cache keys per provider instance.
+     *
+     * @param array<string, mixed> $config
+     */
+    private function computeProviderHash(array $config): string
+    {
+        return match ($config['provider']) {
+            'gitlab' => md5($config['gitlab']['base_url'].'_'.$config['gitlab']['project_id']),
+            'github' => md5($config['github']['base_url'].'_'.$config['github']['owner'].'_'.$config['github']['repo']),
+            default => md5($config['provider']),
+        };
     }
 }

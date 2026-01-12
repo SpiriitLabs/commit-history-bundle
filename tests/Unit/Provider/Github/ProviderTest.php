@@ -13,11 +13,10 @@ namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Unit\Provider\Github;
 
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Spiriit\Bundle\CommitHistoryBundle\DTO\Commit;
-use Spiriit\Bundle\CommitHistoryBundle\Provider\Github\CommitParser;
-use Spiriit\Bundle\CommitHistoryBundle\Provider\Github\Provider;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
-use Symfony\Contracts\HttpClient\ResponseInterface;
+use Spiriit\CommitHistory\Contract\HttpClientInterface;
+use Spiriit\CommitHistory\DTO\Commit;
+use Spiriit\CommitHistory\Provider\Github\CommitParser;
+use Spiriit\CommitHistory\Provider\Github\GithubProvider;
 
 class ProviderTest extends TestCase
 {
@@ -34,16 +33,16 @@ class ProviderTest extends TestCase
     {
         $json = file_get_contents(__DIR__.'/../../../Fixtures/github_commits.json');
 
-        $response = $this->createMock(ResponseInterface::class);
-        $response->method('toArray')->willReturn(json_decode($json, true));
-        $response->method('getHeaders')->willReturn([]);
-
         $this->httpClient
             ->expects($this->once())
             ->method('request')
-            ->willReturn($response);
+            ->willReturn([
+                'status' => 200,
+                'headers' => [],
+                'body' => $json,
+            ]);
 
-        $provider = new Provider(
+        $provider = new GithubProvider(
             $this->httpClient,
             $this->parser,
             'https://api.github.com',
@@ -59,24 +58,24 @@ class ProviderTest extends TestCase
 
     public function testGetCommitsWithToken(): void
     {
-        $response = $this->createMock(ResponseInterface::class);
-        $response->method('toArray')->willReturn([]);
-        $response->method('getHeaders')->willReturn([]);
-
         $this->httpClient
             ->expects($this->once())
             ->method('request')
             ->with(
                 'GET',
                 $this->stringContains('/repos/'),
-                $this->callback(function (array $options): bool {
-                    return isset($options['headers']['Authorization'])
-                        && 'Bearer ghp_xxxx' === $options['headers']['Authorization'];
+                $this->callback(function (array $headers): bool {
+                    return isset($headers['Authorization'])
+                        && 'Bearer ghp_xxxx' === $headers['Authorization'];
                 })
             )
-            ->willReturn($response);
+            ->willReturn([
+                'status' => 200,
+                'headers' => [],
+                'body' => '[]',
+            ]);
 
-        $provider = new Provider(
+        $provider = new GithubProvider(
             $this->httpClient,
             $this->parser,
             'https://api.github.com',
@@ -90,24 +89,21 @@ class ProviderTest extends TestCase
 
     public function testGetCommitsWithRef(): void
     {
-        $response = $this->createMock(ResponseInterface::class);
-        $response->method('toArray')->willReturn([]);
-        $response->method('getHeaders')->willReturn([]);
-
         $this->httpClient
             ->expects($this->once())
             ->method('request')
             ->with(
                 'GET',
-                $this->anything(),
-                $this->callback(function (array $options): bool {
-                    return isset($options['query']['sha'])
-                        && 'develop' === $options['query']['sha'];
-                })
+                $this->stringContains('sha=develop'),
+                $this->anything()
             )
-            ->willReturn($response);
+            ->willReturn([
+                'status' => 200,
+                'headers' => [],
+                'body' => '[]',
+            ]);
 
-        $provider = new Provider(
+        $provider = new GithubProvider(
             $this->httpClient,
             $this->parser,
             'https://api.github.com',
@@ -126,22 +122,23 @@ class ProviderTest extends TestCase
             ['sha' => 'abc123', 'html_url' => 'https://example.com', 'commit' => ['message' => 'test', 'author' => ['name' => 'Test', 'email' => 'test@test.com', 'date' => '2025-01-01T00:00:00Z']]],
         ];
 
-        $response1 = $this->createMock(ResponseInterface::class);
-        $response1->method('toArray')->willReturn($commits);
-        $response1->method('getHeaders')->willReturn([
-            'link' => ['<https://api.github.com/repos/example/project/commits?page=2>; rel="next"'],
-        ]);
-
-        $response2 = $this->createMock(ResponseInterface::class);
-        $response2->method('toArray')->willReturn($commits);
-        $response2->method('getHeaders')->willReturn([]);
-
         $this->httpClient
             ->expects($this->exactly(2))
             ->method('request')
-            ->willReturnOnConsecutiveCalls($response1, $response2);
+            ->willReturnOnConsecutiveCalls(
+                [
+                    'status' => 200,
+                    'headers' => ['link' => ['<https://api.github.com/repos/example/project/commits?page=2>; rel="next"']],
+                    'body' => json_encode($commits),
+                ],
+                [
+                    'status' => 200,
+                    'headers' => [],
+                    'body' => json_encode($commits),
+                ]
+            );
 
-        $provider = new Provider(
+        $provider = new GithubProvider(
             $this->httpClient,
             $this->parser,
             'https://api.github.com',
@@ -156,10 +153,6 @@ class ProviderTest extends TestCase
 
     public function testGetCommitsWithDateRange(): void
     {
-        $response = $this->createMock(ResponseInterface::class);
-        $response->method('toArray')->willReturn([]);
-        $response->method('getHeaders')->willReturn([]);
-
         $since = new \DateTimeImmutable('2025-01-01T00:00:00+00:00');
         $until = new \DateTimeImmutable('2025-12-31T23:59:59+00:00');
 
@@ -168,17 +161,19 @@ class ProviderTest extends TestCase
             ->method('request')
             ->with(
                 'GET',
-                $this->anything(),
-                $this->callback(function (array $options) use ($since, $until): bool {
-                    return isset($options['query']['since'])
-                        && $options['query']['since'] === $since->format('c')
-                        && isset($options['query']['until'])
-                        && $options['query']['until'] === $until->format('c');
-                })
+                $this->callback(function (string $url) use ($since, $until): bool {
+                    return str_contains($url, 'since='.urlencode($since->format('c')))
+                        && str_contains($url, 'until='.urlencode($until->format('c')));
+                }),
+                $this->anything()
             )
-            ->willReturn($response);
+            ->willReturn([
+                'status' => 200,
+                'headers' => [],
+                'body' => '[]',
+            ]);
 
-        $provider = new Provider(
+        $provider = new GithubProvider(
             $this->httpClient,
             $this->parser,
             'https://api.github.com',
@@ -199,9 +194,6 @@ class ProviderTest extends TestCase
             ],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
-        $response->method('toArray')->willReturn($commitResponse);
-
         $this->httpClient
             ->expects($this->once())
             ->method('request')
@@ -210,9 +202,13 @@ class ProviderTest extends TestCase
                 $this->stringContains('/commits/abc123'),
                 $this->anything()
             )
-            ->willReturn($response);
+            ->willReturn([
+                'status' => 200,
+                'headers' => [],
+                'body' => json_encode($commitResponse),
+            ]);
 
-        $provider = new Provider(
+        $provider = new GithubProvider(
             $this->httpClient,
             $this->parser,
             'https://api.github.com',
@@ -231,23 +227,24 @@ class ProviderTest extends TestCase
     {
         $commitResponse = ['sha' => 'abc123', 'files' => []];
 
-        $response = $this->createMock(ResponseInterface::class);
-        $response->method('toArray')->willReturn($commitResponse);
-
         $this->httpClient
             ->expects($this->once())
             ->method('request')
             ->with(
                 'GET',
                 $this->anything(),
-                $this->callback(function (array $options): bool {
-                    return isset($options['headers']['Authorization'])
-                        && 'Bearer ghp_xxxx' === $options['headers']['Authorization'];
+                $this->callback(function (array $headers): bool {
+                    return isset($headers['Authorization'])
+                        && 'Bearer ghp_xxxx' === $headers['Authorization'];
                 })
             )
-            ->willReturn($response);
+            ->willReturn([
+                'status' => 200,
+                'headers' => [],
+                'body' => json_encode($commitResponse),
+            ]);
 
-        $provider = new Provider(
+        $provider = new GithubProvider(
             $this->httpClient,
             $this->parser,
             'https://api.github.com',
@@ -270,15 +267,16 @@ class ProviderTest extends TestCase
             ],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
-        $response->method('toArray')->willReturn($commitResponse);
-
         $this->httpClient
             ->expects($this->once())
             ->method('request')
-            ->willReturn($response);
+            ->willReturn([
+                'status' => 200,
+                'headers' => [],
+                'body' => json_encode($commitResponse),
+            ]);
 
-        $provider = new Provider(
+        $provider = new GithubProvider(
             $this->httpClient,
             $this->parser,
             'https://api.github.com',
@@ -304,15 +302,16 @@ class ProviderTest extends TestCase
             ],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
-        $response->method('toArray')->willReturn($commitResponse);
-
         $this->httpClient
             ->expects($this->once())
             ->method('request')
-            ->willReturn($response);
+            ->willReturn([
+                'status' => 200,
+                'headers' => [],
+                'body' => json_encode($commitResponse),
+            ]);
 
-        $provider = new Provider(
+        $provider = new GithubProvider(
             $this->httpClient,
             $this->parser,
             'https://api.github.com',

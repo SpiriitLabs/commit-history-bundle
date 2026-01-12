@@ -13,9 +13,9 @@ namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Unit\Service;
 
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Spiriit\Bundle\CommitHistoryBundle\DTO\Commit;
-use Spiriit\Bundle\CommitHistoryBundle\Provider\ProviderInterface;
-use Spiriit\Bundle\CommitHistoryBundle\Service\DependencyDetectionService;
+use Spiriit\Bundle\CommitHistoryBundle\Service\CachingDependencyDetectionService;
+use Spiriit\CommitHistory\DTO\Commit;
+use Spiriit\CommitHistory\Provider\ProviderInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 class DependencyDetectionServiceTest extends TestCase
@@ -37,11 +37,11 @@ class DependencyDetectionServiceTest extends TestCase
             ->with('abc123')
             ->willReturn(['src/Controller.php', 'composer.json', 'README.md']);
 
-        $service = new DependencyDetectionService(
+        $service = new CachingDependencyDetectionService(
             $this->provider,
-            $this->cache,
             ['composer.json', 'composer.lock'],
             true,
+            $this->cache,
         );
 
         $result = $service->hasDependencyChanges('abc123');
@@ -57,11 +57,11 @@ class DependencyDetectionServiceTest extends TestCase
             ->with('abc123')
             ->willReturn(['src/Controller.php', 'README.md']);
 
-        $service = new DependencyDetectionService(
+        $service = new CachingDependencyDetectionService(
             $this->provider,
-            $this->cache,
             ['composer.json', 'composer.lock'],
             true,
+            $this->cache,
         );
 
         $result = $service->hasDependencyChanges('abc123');
@@ -77,11 +77,11 @@ class DependencyDetectionServiceTest extends TestCase
             ->with('abc123')
             ->willReturn(['src/Controller.php', 'packages/my-package/composer.json']);
 
-        $service = new DependencyDetectionService(
+        $service = new CachingDependencyDetectionService(
             $this->provider,
-            $this->cache,
             ['composer.json', 'composer.lock'],
             true,
+            $this->cache,
         );
 
         $result = $service->hasDependencyChanges('abc123');
@@ -95,11 +95,11 @@ class DependencyDetectionServiceTest extends TestCase
             ->expects($this->never())
             ->method('getCommitFileNames');
 
-        $service = new DependencyDetectionService(
+        $service = new CachingDependencyDetectionService(
             $this->provider,
-            $this->cache,
             ['composer.json'],
             false,
+            $this->cache,
         );
 
         $result = $service->hasDependencyChanges('abc123');
@@ -115,11 +115,11 @@ class DependencyDetectionServiceTest extends TestCase
             ->with('abc123')
             ->willReturn(['composer.json']);
 
-        $service = new DependencyDetectionService(
+        $service = new CachingDependencyDetectionService(
             $this->provider,
-            $this->cache,
             ['composer.json'],
             true,
+            $this->cache,
         );
 
         // First call - fetches from provider
@@ -139,11 +139,11 @@ class DependencyDetectionServiceTest extends TestCase
             ->method('getCommitFileNames')
             ->willThrowException(new \RuntimeException('API error'));
 
-        $service = new DependencyDetectionService(
+        $service = new CachingDependencyDetectionService(
             $this->provider,
-            $this->cache,
             ['composer.json'],
             true,
+            $this->cache,
         );
 
         $result = $service->hasDependencyChanges('abc123');
@@ -165,11 +165,11 @@ class DependencyDetectionServiceTest extends TestCase
                 return 'abc123' === $commitId ? ['composer.json'] : ['README.md'];
             });
 
-        $service = new DependencyDetectionService(
+        $service = new CachingDependencyDetectionService(
             $this->provider,
-            $this->cache,
             ['composer.json'],
             true,
+            $this->cache,
         );
 
         $result = $service->detectForCommits($commits);
@@ -189,11 +189,11 @@ class DependencyDetectionServiceTest extends TestCase
             ->expects($this->never())
             ->method('getCommitFileNames');
 
-        $service = new DependencyDetectionService(
+        $service = new CachingDependencyDetectionService(
             $this->provider,
-            $this->cache,
             ['composer.json'],
             false,
+            $this->cache,
         );
 
         $result = $service->detectForCommits($commits);
@@ -202,37 +202,9 @@ class DependencyDetectionServiceTest extends TestCase
         $this->assertFalse($result[0]->hasDependenciesChanges);
     }
 
-    public function testClearCacheDeletesCacheForCommit(): void
-    {
-        // Provider should be called twice - once initially, once after cache clear
-        $this->provider
-            ->expects($this->exactly(2))
-            ->method('getCommitFileNames')
-            ->with('abc123')
-            ->willReturnOnConsecutiveCalls(['composer.json'], ['README.md']);
-
-        $service = new DependencyDetectionService(
-            $this->provider,
-            $this->cache,
-            ['composer.json'],
-            true,
-        );
-
-        // First call - populates cache, returns true (composer.json found)
-        $result1 = $service->hasDependencyChanges('abc123');
-        $this->assertTrue($result1);
-
-        // Clear cache
-        $service->clearCache('abc123');
-
-        // Next call should fetch from provider again, returns false (README.md not a dependency file)
-        $result2 = $service->hasDependencyChanges('abc123');
-        $this->assertFalse($result2);
-    }
-
     public function testGetCacheKeyPrefix(): void
     {
-        $prefix = DependencyDetectionService::getCacheKeyPrefix();
+        $prefix = CachingDependencyDetectionService::getCacheKeyPrefix();
 
         $this->assertSame('spiriit_commit_history_has_deps_', $prefix);
     }
@@ -247,11 +219,11 @@ class DependencyDetectionServiceTest extends TestCase
                 ['composer.lock'],
             );
 
-        $service = new DependencyDetectionService(
+        $service = new CachingDependencyDetectionService(
             $this->provider,
-            $this->cache,
             ['composer.json', 'composer.lock', 'package.json', 'package-lock.json'],
             true,
+            $this->cache,
         );
 
         $this->assertTrue($service->hasDependencyChanges('commit1'));

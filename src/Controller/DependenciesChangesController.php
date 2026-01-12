@@ -11,9 +11,9 @@ declare(strict_types=1);
 
 namespace Spiriit\Bundle\CommitHistoryBundle\Controller;
 
-use Spiriit\Bundle\CommitHistoryBundle\DTO\DependencyChange;
-use Spiriit\Bundle\CommitHistoryBundle\Provider\ProviderInterface;
-use Spiriit\Bundle\CommitHistoryBundle\Service\DiffParser\DiffParserRegistry;
+use Spiriit\CommitHistory\DiffParser\DiffParserRegistry;
+use Spiriit\CommitHistory\DTO\DependencyChange;
+use Spiriit\CommitHistory\Provider\ProviderInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Contracts\Cache\CacheInterface;
