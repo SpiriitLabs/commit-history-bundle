@@ -11,32 +11,12 @@ declare(strict_types=1);
 
 namespace Spiriit\Bundle\CommitHistoryBundle\Service;
 
-use Spiriit\Bundle\CommitHistoryBundle\DTO\Commit;
+use Spiriit\CommitHistory\Service\FeedFetcherInterface as BaseFeedFetcherInterface;
 
-interface FeedFetcherInterface
+/**
+ * Bundle-level FeedFetcher interface.
+ * Extends the library's interface to provide a bundle-specific type-hint.
+ */
+interface FeedFetcherInterface extends BaseFeedFetcherInterface
 {
-    /**
-     * @return Commit[]
-     */
-    public function fetch(?int $year = null): array;
-
-    /**
-     * Force refresh the cache and return commits.
-     *
-     * @return Commit[]
-     */
-    public function refresh(?int $year = null): array;
-
-    /**
-     * Get available years for filtering.
-     *
-     * @return int[]
-     */
-    public function getAvailableYears(): array;
-
-    /**
-     * Get the cache key for a specific year.
-     * Useful for cache clearing commands.
-     */
-    public function getCacheKey(int $year): string;
 }

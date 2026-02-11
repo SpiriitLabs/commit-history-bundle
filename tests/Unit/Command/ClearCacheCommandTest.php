@@ -14,8 +14,8 @@ namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Unit\Command;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Spiriit\Bundle\CommitHistoryBundle\Command\ClearCacheCommand;
-use Spiriit\Bundle\CommitHistoryBundle\DTO\Commit;
 use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface;
+use Spiriit\CommitHistory\DTO\Commit;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -24,6 +24,7 @@ class ClearCacheCommandTest extends TestCase
 {
     private ArrayAdapter $cache;
     private FeedFetcherInterface&MockObject $feedFetcher;
+    private string $providerHash = 'test_provider_hash';
 
     protected function setUp(): void
     {
@@ -51,12 +52,7 @@ class ClearCacheCommandTest extends TestCase
             ->method('fetch')
             ->willReturn($commits);
 
-        $this->feedFetcher
-            ->expects($this->exactly(2))
-            ->method('getCacheKey')
-            ->willReturnCallback(fn (int $year) => 'cache_key_'.$year);
-
-        $command = new ClearCacheCommand($this->cache, $this->feedFetcher);
+        $command = new ClearCacheCommand($this->cache, $this->feedFetcher, $this->providerHash);
         $commandTester = new CommandTester($command);
 
         $exitCode = $commandTester->execute(['--all' => true]);
@@ -79,13 +75,7 @@ class ClearCacheCommandTest extends TestCase
             ->with($currentYear)
             ->willReturn($commits);
 
-        $this->feedFetcher
-            ->expects($this->once())
-            ->method('getCacheKey')
-            ->with($currentYear)
-            ->willReturn('cache_key_'.$currentYear);
-
-        $command = new ClearCacheCommand($this->cache, $this->feedFetcher);
+        $command = new ClearCacheCommand($this->cache, $this->feedFetcher, $this->providerHash);
         $commandTester = new CommandTester($command);
 
         $exitCode = $commandTester->execute([]);
@@ -106,13 +96,7 @@ class ClearCacheCommandTest extends TestCase
             ->with(2024)
             ->willReturn($commits);
 
-        $this->feedFetcher
-            ->expects($this->once())
-            ->method('getCacheKey')
-            ->with(2024)
-            ->willReturn('cache_key_2024');
-
-        $command = new ClearCacheCommand($this->cache, $this->feedFetcher);
+        $command = new ClearCacheCommand($this->cache, $this->feedFetcher, $this->providerHash);
         $commandTester = new CommandTester($command);
 
         $exitCode = $commandTester->execute(['year' => '2024']);
@@ -123,14 +107,14 @@ class ClearCacheCommandTest extends TestCase
 
     public function testCommandName(): void
     {
-        $command = new ClearCacheCommand($this->cache, $this->feedFetcher);
+        $command = new ClearCacheCommand($this->cache, $this->feedFetcher, $this->providerHash);
 
         $this->assertSame('spiriit:commit-history:clear', $command->getName());
     }
 
     public function testCommandDescription(): void
     {
-        $command = new ClearCacheCommand($this->cache, $this->feedFetcher);
+        $command = new ClearCacheCommand($this->cache, $this->feedFetcher, $this->providerHash);
 
         $this->assertStringContainsString('Clear all commit history caches', $command->getDescription());
     }

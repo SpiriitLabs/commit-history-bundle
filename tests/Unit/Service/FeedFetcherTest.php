@@ -12,9 +12,9 @@ declare(strict_types=1);
 namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Unit\Service;
 
 use PHPUnit\Framework\TestCase;
-use Spiriit\Bundle\CommitHistoryBundle\DTO\Commit;
-use Spiriit\Bundle\CommitHistoryBundle\Provider\ProviderInterface;
 use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcher;
+use Spiriit\CommitHistory\DTO\Commit;
+use Spiriit\CommitHistory\Service\FeedFetcherInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 class FeedFetcherTest extends TestCase
@@ -32,12 +32,12 @@ class FeedFetcherTest extends TestCase
             new Commit('abc123', 'Test commit', new \DateTimeImmutable(), 'Author', 'https://example.com'),
         ];
 
-        $provider = $this->createMock(ProviderInterface::class);
-        $provider->expects($this->once())
-            ->method('getCommits')
+        $innerFetcher = $this->createMock(FeedFetcherInterface::class);
+        $innerFetcher->expects($this->once())
+            ->method('fetch')
             ->willReturn($commits);
 
-        $fetcher = new FeedFetcher($provider, $this->cache, 3600);
+        $fetcher = new FeedFetcher($innerFetcher, $this->cache, 3600, 'test_provider_hash');
 
         $result = $fetcher->fetch();
 
@@ -51,108 +51,20 @@ class FeedFetcherTest extends TestCase
             new Commit('abc123', 'Test commit', new \DateTimeImmutable(), 'Author', 'https://example.com'),
         ];
 
-        $provider = $this->createMock(ProviderInterface::class);
-        $provider->expects($this->once())
-            ->method('getCommits')
+        $innerFetcher = $this->createMock(FeedFetcherInterface::class);
+        $innerFetcher->expects($this->once())
+            ->method('fetch')
             ->willReturn($commits);
 
-        $fetcher = new FeedFetcher($provider, $this->cache, 3600);
+        $fetcher = new FeedFetcher($innerFetcher, $this->cache, 3600, 'test_provider_hash');
 
-        // First call - fetches from provider
+        // First call - fetches from inner fetcher
         $result1 = $fetcher->fetch();
 
         // Second call - should use cache
         $result2 = $fetcher->fetch();
 
         $this->assertEquals($result1, $result2);
-    }
-
-    public function testRefreshReturnsCommits(): void
-    {
-        $commits = [
-            new Commit('abc123', 'Test commit', new \DateTimeImmutable(), 'Author', 'https://example.com'),
-        ];
-
-        $provider = $this->createMock(ProviderInterface::class);
-        $provider->expects($this->once())
-            ->method('getCommits')
-            ->willReturn($commits);
-
-        $fetcher = new FeedFetcher($provider, $this->cache, 3600);
-
-        $result = $fetcher->refresh();
-
-        $this->assertCount(1, $result);
-        $this->assertContainsOnlyInstancesOf(Commit::class, $result);
-    }
-
-    public function testRefreshInvalidatesCache(): void
-    {
-        $commits1 = [
-            new Commit('abc123', 'Test commit', new \DateTimeImmutable(), 'Author', 'https://example.com'),
-        ];
-        $commits2 = [
-            new Commit('def456', 'New commit', new \DateTimeImmutable(), 'Author', 'https://example.com'),
-        ];
-
-        $provider = $this->createMock(ProviderInterface::class);
-        $provider->expects($this->exactly(2))
-            ->method('getCommits')
-            ->willReturnOnConsecutiveCalls($commits1, $commits2);
-
-        $fetcher = new FeedFetcher($provider, $this->cache, 3600);
-
-        // First call - populates cache
-        $result1 = $fetcher->fetch();
-        $this->assertSame('abc123', $result1[0]->id);
-
-        // Refresh - should invalidate cache and fetch new data
-        $result2 = $fetcher->refresh();
-        $this->assertSame('def456', $result2[0]->id);
-    }
-
-    public function testFetchDoesNotCacheEmptyResult(): void
-    {
-        $provider = $this->createMock(ProviderInterface::class);
-        $provider->expects($this->exactly(2))
-            ->method('getCommits')
-            ->willReturn([]);
-
-        $fetcher = new FeedFetcher($provider, $this->cache, 3600);
-
-        // First call - returns empty, should not cache
-        $result1 = $fetcher->fetch();
-        $this->assertEmpty($result1);
-
-        // Second call - should call provider again (not use cache)
-        $result2 = $fetcher->fetch();
-        $this->assertEmpty($result2);
-    }
-
-    public function testFetchWithYearPassesDateRangeToProvider(): void
-    {
-        $commits = [
-            new Commit('abc123', 'Test commit', new \DateTimeImmutable(), 'Author', 'https://example.com'),
-        ];
-
-        $provider = $this->createMock(ProviderInterface::class);
-        $provider->expects($this->once())
-            ->method('getCommits')
-            ->with(
-                $this->callback(function (\DateTimeImmutable $since): bool {
-                    return '2024-01-01' === $since->format('Y-m-d');
-                }),
-                $this->callback(function (\DateTimeImmutable $until): bool {
-                    return '2024-12-31' === $until->format('Y-m-d');
-                })
-            )
-            ->willReturn($commits);
-
-        $fetcher = new FeedFetcher($provider, $this->cache, 3600);
-
-        $result = $fetcher->fetch(2024);
-
-        $this->assertCount(1, $result);
     }
 
     public function testFetchCachesPerYear(): void
@@ -164,75 +76,45 @@ class FeedFetcherTest extends TestCase
             new Commit('def456', 'Commit 2025', new \DateTimeImmutable(), 'Author', 'https://example.com'),
         ];
 
-        $provider = $this->createMock(ProviderInterface::class);
-        $provider->expects($this->exactly(2))
-            ->method('getCommits')
+        $innerFetcher = $this->createMock(FeedFetcherInterface::class);
+        $innerFetcher->expects($this->exactly(2))
+            ->method('fetch')
             ->willReturnOnConsecutiveCalls($commits2024, $commits2025);
 
-        $fetcher = new FeedFetcher($provider, $this->cache, 3600);
+        $fetcher = new FeedFetcher($innerFetcher, $this->cache, 3600, 'test_provider_hash');
 
         // Fetch 2024
         $result2024 = $fetcher->fetch(2024);
         $this->assertSame('abc123', $result2024[0]->id);
 
-        // Fetch 2025 - should call provider again (different year = different cache key)
+        // Fetch 2025 - should call inner fetcher again (different year = different cache key)
         $result2025 = $fetcher->fetch(2025);
         $this->assertSame('def456', $result2025[0]->id);
 
-        // Fetch 2024 again - should use cache (provider not called)
+        // Fetch 2024 again - should use cache (inner fetcher not called)
         $result2024Again = $fetcher->fetch(2024);
         $this->assertSame('abc123', $result2024Again[0]->id);
     }
 
-    public function testGetAvailableYearsReturnsLastSixYearsByDefault(): void
+    public function testGetAvailableYearsDelegatesToInner(): void
     {
-        $provider = $this->createMock(ProviderInterface::class);
-        $fetcher = new FeedFetcher($provider, $this->cache, 3600);
+        $currentYear = (int) date('Y');
+        $expectedYears = [$currentYear, $currentYear - 1, $currentYear - 2];
+
+        $innerFetcher = $this->createMock(FeedFetcherInterface::class);
+        $innerFetcher->expects($this->once())
+            ->method('getAvailableYears')
+            ->willReturn($expectedYears);
+
+        $fetcher = new FeedFetcher($innerFetcher, $this->cache, 3600, 'test_provider_hash');
 
         $years = $fetcher->getAvailableYears();
-        $currentYear = (int) date('Y');
 
-        $this->assertCount(6, $years);
-        $this->assertSame($currentYear, $years[0]);
-        $this->assertSame($currentYear - 5, $years[5]);
+        $this->assertSame($expectedYears, $years);
     }
 
-    public function testGetAvailableYearsWithCustomCount(): void
+    public function testGetCacheKeyPrefixReturnsExpectedPrefix(): void
     {
-        $provider = $this->createMock(ProviderInterface::class);
-        $fetcher = new FeedFetcher($provider, $this->cache, 3600, 10);
-
-        $years = $fetcher->getAvailableYears();
-        $currentYear = (int) date('Y');
-
-        $this->assertCount(10, $years);
-        $this->assertSame($currentYear, $years[0]);
-        $this->assertSame($currentYear - 9, $years[9]);
-    }
-
-    public function testRefreshWithYearRefreshesOnlyThatYear(): void
-    {
-        $commits = [
-            new Commit('abc123', 'Test commit', new \DateTimeImmutable(), 'Author', 'https://example.com'),
-        ];
-
-        $provider = $this->createMock(ProviderInterface::class);
-        $provider->expects($this->once())
-            ->method('getCommits')
-            ->with(
-                $this->callback(function (\DateTimeImmutable $since): bool {
-                    return '2024-01-01' === $since->format('Y-m-d');
-                }),
-                $this->callback(function (\DateTimeImmutable $until): bool {
-                    return '2024-12-31' === $until->format('Y-m-d');
-                })
-            )
-            ->willReturn($commits);
-
-        $fetcher = new FeedFetcher($provider, $this->cache, 3600);
-
-        $result = $fetcher->refresh(2024);
-
-        $this->assertCount(1, $result);
+        $this->assertSame('spiriit_commit_history_feed_', FeedFetcher::getCacheKeyPrefix());
     }
 }

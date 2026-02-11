@@ -11,19 +11,23 @@ declare(strict_types=1);
 
 namespace Spiriit\Bundle\CommitHistoryBundle\Service;
 
-use Spiriit\Bundle\CommitHistoryBundle\DTO\Commit;
-use Spiriit\Bundle\CommitHistoryBundle\Provider\ProviderInterface;
+use Spiriit\CommitHistory\DTO\Commit;
+use Spiriit\CommitHistory\Service\FeedFetcherInterface as BaseFeedFetcherInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
-class FeedFetcher implements FeedFetcherInterface
+/**
+ * Decorator that adds per-year caching to the library's FeedFetcher.
+ */
+final class FeedFetcher implements FeedFetcherInterface
 {
+    private const CACHE_KEY_PREFIX = 'spiriit_commit_history_feed_';
+
     public function __construct(
-        private readonly ProviderInterface $provider,
+        private readonly BaseFeedFetcherInterface $inner,
         private readonly CacheInterface $cache,
-        private readonly int $cacheTtl = 3600,
-        private readonly int $availableYearsCount = 6,
-        private readonly ?DependencyDetectionService $dependencyDetectionService = null,
+        private readonly int $cacheTtl,
+        private readonly string $providerHash,
     ) {
     }
 
@@ -33,37 +37,20 @@ class FeedFetcher implements FeedFetcherInterface
     public function fetch(?int $year = null): array
     {
         $year = $year ?? (int) date('Y');
-        [$since, $until] = $this->getYearDateRange($year);
+        $cacheKey = $this->getCacheKey($year);
 
-        $commits = $this->cache->get($this->getCacheKey($year), function (ItemInterface $item) use ($since, $until): array {
-            $commits = $this->provider->getCommits($since, $until);
+        return $this->cache->get($cacheKey, function (ItemInterface $item) use ($year): array {
+            $commits = $this->inner->fetch($year);
 
+            // Don't cache empty results for long
             if (empty($commits)) {
-                $item->expiresAfter(0);
+                $item->expiresAfter(60); // Cache empty results for 1 minute
             } else {
                 $item->expiresAfter($this->cacheTtl);
             }
 
             return $commits;
         });
-
-        // Detect dependency changes for each commit (uses per-commit caching)
-        if (null !== $this->dependencyDetectionService) {
-            $commits = $this->dependencyDetectionService->detectForCommits($commits);
-        }
-
-        return $commits;
-    }
-
-    /**
-     * @return Commit[]
-     */
-    public function refresh(?int $year = null): array
-    {
-        $year = $year ?? (int) date('Y');
-        $this->cache->delete($this->getCacheKey($year));
-
-        return $this->fetch($year);
     }
 
     /**
@@ -71,29 +58,16 @@ class FeedFetcher implements FeedFetcherInterface
      */
     public function getAvailableYears(): array
     {
-        $currentYear = (int) date('Y');
-        $years = [];
-
-        for ($i = 0; $i < $this->availableYearsCount; ++$i) {
-            $years[] = $currentYear - $i;
-        }
-
-        return $years;
+        return $this->inner->getAvailableYears();
     }
 
-    public function getCacheKey(int $year): string
+    public static function getCacheKeyPrefix(): string
     {
-        return 'spiriit_commit_history_feed_'.md5(\get_class($this->provider)).'_'.$year;
+        return self::CACHE_KEY_PREFIX;
     }
 
-    /**
-     * @return array{\DateTimeImmutable, \DateTimeImmutable}
-     */
-    private function getYearDateRange(int $year): array
+    private function getCacheKey(int $year): string
     {
-        $since = new \DateTimeImmutable(\sprintf('%d-01-01T00:00:00+00:00', $year));
-        $until = new \DateTimeImmutable(\sprintf('%d-12-31T23:59:59+00:00', $year));
-
-        return [$since, $until];
+        return self::CACHE_KEY_PREFIX.$this->providerHash.'_'.$year;
     }
 }

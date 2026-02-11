@@ -12,7 +12,8 @@ declare(strict_types=1);
 namespace Spiriit\Bundle\CommitHistoryBundle\Command;
 
 use Spiriit\Bundle\CommitHistoryBundle\Controller\DependenciesChangesController;
-use Spiriit\Bundle\CommitHistoryBundle\Service\DependencyDetectionService;
+use Spiriit\Bundle\CommitHistoryBundle\Service\CachingDependencyDetectionService;
+use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcher;
 use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -32,6 +33,7 @@ class ClearCacheCommand extends Command
     public function __construct(
         private readonly CacheInterface $cache,
         private readonly FeedFetcherInterface $feedFetcher,
+        private readonly string $providerHash,
     ) {
         parent::__construct();
     }
@@ -93,7 +95,8 @@ class ClearCacheCommand extends Command
             $this->clearDependencyCaches($commit->id);
         }
 
-        $this->cache->delete($this->feedFetcher->getCacheKey($year));
+        $cacheKey = FeedFetcher::getCacheKeyPrefix().$this->providerHash.'_'.$year;
+        $this->cache->delete($cacheKey);
 
         return \count($commits);
     }
@@ -101,7 +104,7 @@ class ClearCacheCommand extends Command
     private function clearDependencyCaches(string $commitId): void
     {
         // Clear dependency detection cache (badge)
-        $hasDepsKey = DependencyDetectionService::getCacheKeyPrefix().$commitId;
+        $hasDepsKey = CachingDependencyDetectionService::getCacheKeyPrefix().$commitId;
         $this->cache->delete($hasDepsKey);
 
         // Clear dependency changes cache (list)

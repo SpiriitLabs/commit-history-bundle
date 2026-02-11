@@ -20,6 +20,28 @@ A Symfony bundle that fetches commit history from GitLab or GitHub repositories 
 - **Standalone Page**: Ready-to-use page with embedded CSS
 - **Embeddable Fragment**: Include the timeline in your own layouts
 
+## Architecture
+
+This project is split into two packages:
+
+- **[spiriitlabs/commit-history](https://github.com/SpiriitLabs/commit-history)** - A standalone, framework-agnostic PHP library containing all the core logic (providers, DTOs, services, diff parsers)
+- **spiriitlabs/commit-history-bundle** (this package) - A Symfony bundle providing controllers, commands, Twig templates, and adapters to integrate the library with Symfony
+
+This separation allows you to use the core library in any PHP project (Laravel, plain PHP, etc.) while Symfony users get a ready-to-use bundle with full integration.
+
+### Bundle Components
+
+The bundle provides Symfony-specific integrations:
+
+| Component | Description |
+|-----------|-------------|
+| `SymfonyCacheAdapter` | Bridges Symfony's cache to the library's `CacheInterface` |
+| `SymfonyHttpClientAdapter` | Bridges Symfony's HTTP client to the library's `HttpClientInterface` |
+| `TimelineController` | Renders the timeline page |
+| `DependenciesChangesController` | JSON API for dependency details |
+| `RefreshCacheCommand` | CLI command to refresh cache |
+| `ClearCacheCommand` | CLI command to clear cache |
+
 ## Requirements
 
 - PHP 8.2 or higher
@@ -143,7 +165,7 @@ You can embed the timeline in your own templates by injecting the `FeedFetcherIn
 
 namespace App\Controller;
 
-use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface;
+use Spiriit\CommitHistory\Service\FeedFetcherInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -246,15 +268,15 @@ spiriit_commit_history:
 
 The bundle uses a tagged service pattern for diff parsers. You can add support for additional dependency file formats by creating your own parser.
 
-1. Create a parser class implementing `DiffParserInterface`:
+1. Create a parser class implementing `DiffParserInterface` from the library:
 
 ```php
 <?php
 
 namespace App\Service\DiffParser;
 
-use Spiriit\Bundle\CommitHistoryBundle\DTO\DependencyChange;
-use Spiriit\Bundle\CommitHistoryBundle\Service\DiffParser\DiffParserInterface;
+use Spiriit\CommitHistory\DTO\DependencyChange;
+use Spiriit\CommitHistory\DiffParser\DiffParserInterface;
 
 class GemfileDiffParser implements DiffParserInterface
 {
@@ -358,6 +380,28 @@ The templates use BEM naming convention:
 | `.timeline__dependencies-type--added` | Added dependency (green) |
 | `.timeline__dependencies-type--updated` | Updated dependency (orange) |
 | `.timeline__dependencies-type--removed` | Removed dependency (red) |
+
+## Using the Standalone Library
+
+If you're not using Symfony, you can use the standalone library directly. See the [spiriitlabs/commit-history](https://github.com/SpiriitLabs/commit-history) repository for documentation.
+
+```bash
+composer require spiriitlabs/commit-history
+```
+
+The library provides:
+
+- `Spiriit\CommitHistory\Provider\Github\GithubProvider` - GitHub API client
+- `Spiriit\CommitHistory\Provider\Gitlab\GitlabProvider` - GitLab API client
+- `Spiriit\CommitHistory\Service\FeedFetcher` - Caching wrapper for providers
+- `Spiriit\CommitHistory\DTO\Commit` - Commit data transfer object
+- `Spiriit\CommitHistory\DTO\DependencyChange` - Dependency change DTO
+- `Spiriit\CommitHistory\DiffParser\*` - Diff parsers for dependency detection
+
+You'll need to provide your own implementations of:
+
+- `Spiriit\CommitHistory\Contract\CacheInterface` - Cache abstraction
+- `Spiriit\CommitHistory\Contract\HttpClientInterface` - HTTP client abstraction
 
 ## Testing
 

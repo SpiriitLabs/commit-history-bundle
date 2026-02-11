@@ -13,8 +13,9 @@ namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Functional\DependencyInjectio
 
 use PHPUnit\Framework\TestCase;
 use Spiriit\Bundle\CommitHistoryBundle\DependencyInjection\SpiriitCommitHistoryExtension;
-use Spiriit\Bundle\CommitHistoryBundle\Provider\ProviderInterface;
-use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface;
+use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface as BundleFeedFetcherInterface;
+use Spiriit\CommitHistory\Provider\ProviderInterface;
+use Spiriit\CommitHistory\Service\FeedFetcherInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 class SpiriitCommitHistoryExtensionTest extends TestCase
@@ -119,6 +120,20 @@ class SpiriitCommitHistoryExtensionTest extends TestCase
         ], $this->container);
 
         $this->assertTrue($this->container->hasAlias(FeedFetcherInterface::class));
+    }
+
+    public function testBundleFeedFetcherInterfaceAlias(): void
+    {
+        $this->extension->load([
+            'spiriit_commit_history' => [
+                'provider' => 'gitlab',
+                'gitlab' => [
+                    'project_id' => '123',
+                ],
+            ],
+        ], $this->container);
+
+        $this->assertTrue($this->container->hasAlias(BundleFeedFetcherInterface::class));
     }
 
     public function testProviderInterfaceAliasForGitlab(): void

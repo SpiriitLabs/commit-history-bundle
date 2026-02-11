@@ -11,7 +11,8 @@ declare(strict_types=1);
 
 namespace Spiriit\Bundle\CommitHistoryBundle\Command;
 
-use Spiriit\Bundle\CommitHistoryBundle\Service\DependencyDetectionService;
+use Spiriit\Bundle\CommitHistoryBundle\Service\CachingDependencyDetectionService;
+use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcher;
 use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -31,6 +32,7 @@ class RefreshCacheCommand extends Command
     public function __construct(
         private readonly FeedFetcherInterface $feedFetcher,
         private readonly CacheInterface $cache,
+        private readonly string $providerHash,
     ) {
         parent::__construct();
     }
@@ -72,7 +74,7 @@ class RefreshCacheCommand extends Command
     }
 
     /**
-     * @return \Spiriit\Bundle\CommitHistoryBundle\DTO\Commit[]
+     * @return \Spiriit\CommitHistory\DTO\Commit[]
      */
     private function refreshYear(int $year): array
     {
@@ -81,11 +83,14 @@ class RefreshCacheCommand extends Command
 
         // Clear dependency detection cache for existing commits
         foreach ($existingCommits as $commit) {
-            $hasDepsKey = DependencyDetectionService::getCacheKeyPrefix().$commit->id;
+            $hasDepsKey = CachingDependencyDetectionService::getCacheKeyPrefix().$commit->id;
             $this->cache->delete($hasDepsKey);
         }
 
-        // Refresh commits (clears commits cache, re-fetches, and re-detects dependencies)
-        return $this->feedFetcher->refresh($year);
+        // Clear commits cache and re-fetch
+        $cacheKey = FeedFetcher::getCacheKeyPrefix().$this->providerHash.'_'.$year;
+        $this->cache->delete($cacheKey);
+
+        return $this->feedFetcher->fetch($year);
     }
 }

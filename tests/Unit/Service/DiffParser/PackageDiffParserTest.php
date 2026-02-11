@@ -12,8 +12,8 @@ declare(strict_types=1);
 namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Unit\Service\DiffParser;
 
 use PHPUnit\Framework\TestCase;
-use Spiriit\Bundle\CommitHistoryBundle\DTO\DependencyChange;
-use Spiriit\Bundle\CommitHistoryBundle\Service\DiffParser\PackageDiffParser;
+use Spiriit\CommitHistory\DiffParser\PackageDiffParser;
+use Spiriit\CommitHistory\DTO\DependencyChange;
 
 class PackageDiffParserTest extends TestCase
 {

@@ -12,6 +12,7 @@
     ],
     "require": {
         "php": ">=8.2",
+        "spiriitlabs/commit-history": "^1.0",
         "symfony/cache": "^6.4|^7.0",
         "symfony/console": "^6.4|^7.0",
         "symfony/framework-bundle": "^6.4|^7.0",

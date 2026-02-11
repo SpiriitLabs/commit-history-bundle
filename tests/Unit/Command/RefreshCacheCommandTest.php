@@ -14,8 +14,8 @@ namespace Spiriit\Bundle\CommitHistoryBundle\Tests\Unit\Command;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Spiriit\Bundle\CommitHistoryBundle\Command\RefreshCacheCommand;
-use Spiriit\Bundle\CommitHistoryBundle\DTO\Commit;
 use Spiriit\Bundle\CommitHistoryBundle\Service\FeedFetcherInterface;
+use Spiriit\CommitHistory\DTO\Commit;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -24,6 +24,7 @@ class RefreshCacheCommandTest extends TestCase
 {
     private ArrayAdapter $cache;
     private FeedFetcherInterface&MockObject $feedFetcher;
+    private string $providerHash = 'test_provider_hash';
 
     protected function setUp(): void
     {
@@ -39,17 +40,12 @@ class RefreshCacheCommandTest extends TestCase
             new Commit('def456', 'Test commit 2', new \DateTimeImmutable(), 'Author', 'https://example.com'),
         ];
 
-        $this->feedFetcher->expects($this->once())
+        $this->feedFetcher->expects($this->exactly(2))
             ->method('fetch')
             ->with($currentYear)
             ->willReturn($commits);
 
-        $this->feedFetcher->expects($this->once())
-            ->method('refresh')
-            ->with($currentYear)
-            ->willReturn($commits);
-
-        $command = new RefreshCacheCommand($this->feedFetcher, $this->cache);
+        $command = new RefreshCacheCommand($this->feedFetcher, $this->cache, $this->providerHash);
         $commandTester = new CommandTester($command);
 
         $exitCode = $commandTester->execute([]);
@@ -64,17 +60,12 @@ class RefreshCacheCommandTest extends TestCase
             new Commit('abc123', 'Test commit', new \DateTimeImmutable(), 'Author', 'https://example.com'),
         ];
 
-        $this->feedFetcher->expects($this->once())
+        $this->feedFetcher->expects($this->exactly(2))
             ->method('fetch')
             ->with(2024)
             ->willReturn($commits);
 
-        $this->feedFetcher->expects($this->once())
-            ->method('refresh')
-            ->with(2024)
-            ->willReturn($commits);
-
-        $command = new RefreshCacheCommand($this->feedFetcher, $this->cache);
+        $command = new RefreshCacheCommand($this->feedFetcher, $this->cache, $this->providerHash);
         $commandTester = new CommandTester($command);
 
         $exitCode = $commandTester->execute(['year' => '2024']);
@@ -97,15 +88,11 @@ class RefreshCacheCommandTest extends TestCase
             ->method('getAvailableYears')
             ->willReturn($availableYears);
 
-        $this->feedFetcher->expects($this->exactly(3))
+        $this->feedFetcher->expects($this->exactly(6))
             ->method('fetch')
             ->willReturn($commits);
 
-        $this->feedFetcher->expects($this->exactly(3))
-            ->method('refresh')
-            ->willReturn($commits);
-
-        $command = new RefreshCacheCommand($this->feedFetcher, $this->cache);
+        $command = new RefreshCacheCommand($this->feedFetcher, $this->cache, $this->providerHash);
         $commandTester = new CommandTester($command);
 
         $exitCode = $commandTester->execute(['--all' => true]);
@@ -126,15 +113,11 @@ class RefreshCacheCommandTest extends TestCase
             ->method('getAvailableYears')
             ->willReturn($availableYears);
 
-        $this->feedFetcher->expects($this->exactly(2))
+        $this->feedFetcher->expects($this->exactly(4))
             ->method('fetch')
             ->willReturn($commits);
 
-        $this->feedFetcher->expects($this->exactly(2))
-            ->method('refresh')
-            ->willReturn($commits);
-
-        $command = new RefreshCacheCommand($this->feedFetcher, $this->cache);
+        $command = new RefreshCacheCommand($this->feedFetcher, $this->cache, $this->providerHash);
         $commandTester = new CommandTester($command);
 
         $exitCode = $commandTester->execute(['-a' => true]);
@@ -145,7 +128,7 @@ class RefreshCacheCommandTest extends TestCase
 
     public function testCommandName(): void
     {
-        $command = new RefreshCacheCommand($this->feedFetcher, $this->cache);
+        $command = new RefreshCacheCommand($this->feedFetcher, $this->cache, $this->providerHash);
 
         $this->assertSame('spiriit:commit-history:refresh', $command->getName());
     }
@@ -158,19 +141,14 @@ class RefreshCacheCommandTest extends TestCase
 
         // Pre-populate cache with dependency detection value
         $cacheKey = 'spiriit_commit_history_has_deps_abc123';
-        $this->cache->get($cacheKey, fn () => true);
+        $this->cache->get($cacheKey, static fn () => true);
 
-        $this->feedFetcher->expects($this->once())
+        $this->feedFetcher->expects($this->exactly(2))
             ->method('fetch')
             ->with(2024)
             ->willReturn($commits);
 
-        $this->feedFetcher->expects($this->once())
-            ->method('refresh')
-            ->with(2024)
-            ->willReturn($commits);
-
-        $command = new RefreshCacheCommand($this->feedFetcher, $this->cache);
+        $command = new RefreshCacheCommand($this->feedFetcher, $this->cache, $this->providerHash);
         $commandTester = new CommandTester($command);
 
         $exitCode = $commandTester->execute(['year' => '2024']);
