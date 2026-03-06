@@ -24,7 +24,7 @@ A Symfony bundle that fetches commit history from GitLab or GitHub repositories 
 
 This project is split into two packages:
 
-- **[spiriitlabs/commit-history](https://github.com/SpiriitLabs/commit-history)** - A standalone, framework-agnostic PHP library containing all the core logic (providers, DTOs, services, diff parsers)
+- **[spiriitlabs/commit-history-lib](https://github.com/SpiriitLabs/commit-history-lib)** - A standalone, framework-agnostic PHP library containing all the core logic (providers, DTOs, services, diff parsers)
 - **spiriitlabs/commit-history-bundle** (this package) - A Symfony bundle providing controllers, commands, Twig templates, and adapters to integrate the library with Symfony
 
 This separation allows you to use the core library in any PHP project (Laravel, plain PHP, etc.) while Symfony users get a ready-to-use bundle with full integration.
